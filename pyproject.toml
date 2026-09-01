@@ -1,0 +1,13 @@
+[project]
+name = "brrrr-calculadora"
+version = "0.1.0"
+description = "Calculadora de rentabilidad de deals inmobiliarios con el metodo BRRRR"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
