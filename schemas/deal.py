@@ -6,6 +6,8 @@ a Decimal para el dominio y lo devuelve como string en el JSON.
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from schemas.types import Money, Percent
@@ -55,3 +57,32 @@ class DealResultOut(BaseModel):
     cash_out: Money
     total_invested: Money
     trapped_cash: Money
+
+
+class DealOut(BaseModel):
+    """Un deal guardado: sus datos de entrada mas el resultado recalculado.
+
+    El resultado NO se guarda en la base: se recalcula al leer con evaluate_deal,
+    asi la unica fuente del calculo es core y nunca hay resultados viejos.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+
+    purchase_price: Money
+    rehab_budget: Money
+    arv: Money
+
+    ltc: Percent
+    monthly_interest_rate: Percent
+    points: Percent
+
+    ltv: Percent
+    seasoning_months: int
+    closing_costs: Money
+
+    created_at: datetime
+
+    result: DealResultOut
