@@ -1,0 +1,169 @@
+:root {
+  color-scheme: light dark;
+  --bg: #0f1115;
+  --panel: #1a1d24;
+  --borde: #2a2f3a;
+  --texto: #e6e8ec;
+  --tenue: #9aa2b1;
+  --acento: #4f9cf9;
+  --bueno: #2ecc71;
+  --malo: #e74c3c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--texto);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.contenedor {
+  max-width: 760px;
+  margin: 2.5rem auto;
+  padding: 0 1.25rem;
+}
+
+h1 {
+  margin: 0 0 0.25rem;
+}
+
+.intro {
+  color: var(--tenue);
+  margin-top: 0;
+}
+
+.grilla {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.etiqueta {
+  font-size: 0.85rem;
+  color: var(--tenue);
+}
+
+input {
+  background: #0f1115;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  padding: 0.55rem 0.65rem;
+  color: var(--texto);
+  font-size: 1rem;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--acento);
+}
+
+.ayuda {
+  font-size: 0.72rem;
+  color: var(--tenue);
+}
+
+.boton {
+  grid-column: 1 / -1;
+  background: var(--acento);
+  color: #0b1220;
+  border: none;
+  border-radius: 8px;
+  padding: 0.7rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.boton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.error {
+  color: var(--malo);
+  font-weight: 600;
+}
+
+.resultado {
+  margin-top: 1.75rem;
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+td {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--borde);
+}
+
+td:first-child {
+  color: var(--tenue);
+}
+
+.monto {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.atrapado {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.25rem;
+  padding: 1rem 1.1rem;
+  border-radius: 10px;
+  border: 1px solid var(--borde);
+}
+
+.atrapado .etiqueta {
+  font-size: 1rem;
+  color: var(--texto);
+}
+
+.atrapado .valor {
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.atrapado.bueno {
+  border-color: var(--bueno);
+}
+
+.atrapado.bueno .valor {
+  color: var(--bueno);
+}
+
+.atrapado.malo {
+  border-color: var(--malo);
+}
+
+.atrapado.malo .valor {
+  color: var(--malo);
+}
+
+@media (max-width: 560px) {
+  .grilla {
+    grid-template-columns: 1fr;
+  }
+}
