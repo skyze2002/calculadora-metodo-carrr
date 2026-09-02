@@ -32,10 +32,15 @@ class PrivateLoan:
 
     # Porcentaje sobre el costo total (compra + rehab). Ej: Decimal("0.90").
     ltc: Decimal
-    # Cronograma de desembolsos del rehab.
+    # Tasa de interes MENSUAL como fraccion sobre el prestamo total.
+    # Ej: Decimal("0.005") = 0,5% mensual. Se paga mes a mes, no va al payoff.
+    monthly_interest_rate: Decimal = Decimal("0")
+    # Puntos / origination fee como fraccion del prestamo. Ej: Decimal("0.02").
+    # Se pagan en el payoff.
+    points: Decimal = Decimal("0")
+    # Cronograma de desembolsos del rehab. Concepto del dominio (scope of work);
+    # por ahora NO entra al calculo: el interes corre sobre el prestamo total.
     draws: tuple[Draw, ...] = field(default_factory=tuple)
-    # NOTA: tasa de interes, puntos/origination y modo de calculo (simple vs
-    # compuesto, mensual vs anual) se agregan cuando definamos el calculo.
 
 
 @dataclass(frozen=True)
@@ -67,13 +72,20 @@ class DealResult:
 
     # Monto que presta el prestamista privado (LTC sobre costo total).
     private_loan_amount: Decimal
-    # Lo que se le entrega al prestamista privado el dia del refi.
+    # Aporte inicial: parte de compra+rehab que el prestamista no financio.
+    down_payment: Decimal
+    # Puntos / origination fee en dinero (prestamo x points).
+    points_amount: Decimal
+    # Interes de un mes en dinero (prestamo x tasa mensual). Informativo:
+    # se paga mes a mes y NO afecta el dinero atrapado.
+    monthly_interest: Decimal
+    # Lo que se le entrega al prestamista el dia del refi (principal + puntos).
     payoff: Decimal
     # Monto del nuevo prestamo del banco (LTV sobre ARV).
     refinance_loan_amount: Decimal
     # Dinero que devuelve el banco despues de pagar payoff y costos de cierre.
     cash_out: Decimal
-    # Total que puso el inversor de su bolsillo.
+    # Total que puso el inversor de su bolsillo (por ahora, el aporte inicial).
     total_invested: Decimal
     # Total invertido menos cash out. La metrica que decide si el deal sirve.
     trapped_cash: Decimal

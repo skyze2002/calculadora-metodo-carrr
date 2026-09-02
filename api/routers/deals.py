@@ -30,6 +30,8 @@ def _to_domain(payload: DealCreate) -> DealInput:
         arv=payload.arv,
         private_loan=PrivateLoan(
             ltc=payload.ltc,
+            monthly_interest_rate=payload.monthly_interest_rate,
+            points=payload.points,
             draws=tuple(
                 Draw(month=d.month, amount=d.amount) for d in payload.draws
             ),

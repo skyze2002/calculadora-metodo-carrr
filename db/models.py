@@ -35,6 +35,11 @@ class Deal(Base):
 
     # Prestamista privado.
     ltc: Mapped[Decimal] = mapped_column(Percent)
+    # Tasa de interes mensual (fraccion) y puntos (fraccion).
+    monthly_interest_rate: Mapped[Decimal] = mapped_column(
+        Percent, default=Decimal("0")
+    )
+    points: Mapped[Decimal] = mapped_column(Percent, default=Decimal("0"))
 
     # Refi con el banco.
     ltv: Mapped[Decimal] = mapped_column(Percent)

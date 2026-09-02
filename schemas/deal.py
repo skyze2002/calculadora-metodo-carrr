@@ -29,6 +29,10 @@ class DealCreate(BaseModel):
 
     # Prestamista privado.
     ltc: Percent
+    # Tasa de interes MENSUAL como fraccion (ej "0.005" = 0,5% mensual).
+    monthly_interest_rate: Percent = Field(default="0")  # type: ignore[assignment]
+    # Puntos / origination fee como fraccion del prestamo (ej "0.02" = 2%).
+    points: Percent = Field(default="0")  # type: ignore[assignment]
     draws: list[DrawIn] = Field(default_factory=list)
 
     # Refi con el banco.
@@ -43,6 +47,9 @@ class DealResultOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     private_loan_amount: Money
+    down_payment: Money
+    points_amount: Money
+    monthly_interest: Money
     payoff: Money
     refinance_loan_amount: Money
     cash_out: Money
