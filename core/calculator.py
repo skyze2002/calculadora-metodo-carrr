@@ -73,6 +73,7 @@ def evaluate_deal(deal: DealInput) -> DealResult:
     trapped_cash = total_invested - cash_out
 
     return DealResult(
+        total_cost=_cents(total_cost),
         private_loan_amount=_cents(private_loan_amount),
         down_payment=_cents(down_payment),
         points_amount=_cents(points_amount),

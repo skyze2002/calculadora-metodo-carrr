@@ -70,6 +70,8 @@ class DealInput:
 class DealResult:
     """Resultado del calculo. Lo que la API devuelve y el frontend muestra."""
 
+    # Costo total del proyecto: compra + rehab.
+    total_cost: Decimal
     # Monto que presta el prestamista privado (LTC sobre costo total).
     private_loan_amount: Decimal
     # Aporte inicial: parte de compra+rehab que el prestamista no financio.

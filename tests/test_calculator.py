@@ -39,6 +39,7 @@ def test_ejemplo_acordado() -> None:
     """Verifica todos los intermedios y el dinero atrapado del ejemplo."""
     result = evaluate_deal(_deal_base())
 
+    assert result.total_cost == Decimal("130000.00")
     assert result.private_loan_amount == Decimal("117000.00")
     assert result.down_payment == Decimal("13000.00")
     assert result.points_amount == Decimal("2340.00")

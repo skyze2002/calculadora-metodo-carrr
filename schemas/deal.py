@@ -48,6 +48,7 @@ class DealResultOut(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+    total_cost: Money
     private_loan_amount: Money
     down_payment: Money
     points_amount: Money
