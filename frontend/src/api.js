@@ -7,22 +7,9 @@ import { evaluateLocal } from "./calc.js";
 const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
 export async function evaluateDeal(deal) {
-  // App standalone (APK y dev sin backend): calcula en el dispositivo con el
-  // espejo de core. Solo pega a la red si se configura VITE_API_URL (para
-  // reconectar el backend, ej. guardar/listar deals).
-  if (!API_BASE) {
-    return evaluateLocal(deal);
-  }
-
-  const response = await fetch(`${API_BASE}/deals/evaluate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(deal),
-  });
-  if (!response.ok) {
-    throw new Error(`La API respondio ${response.status}`);
-  }
-  return response.json();
+  // El calculo es SIEMPRE local (offline) y es la fuente de verdad. El backend
+  // (VITE_API_URL) se usa solo para el analisis con IA, ver explainDeal.
+  return evaluateLocal(deal);
 }
 
 // Pide el analisis con IA. Siempre necesita el backend (no hay version local):

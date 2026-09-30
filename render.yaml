@@ -1,5 +1,5 @@
 # Blueprint de Render para el backend de la Calculadora BRRRR.
-# Deploy minimo: expone el endpoint POST /deals/explain que llama a Claude para
+# Deploy minimo: expone el endpoint POST /deals/explain que llama a OpenAI para
 # el analisis con IA. NO usa Postgres. La API key va como variable SECRETA en el
 # panel de Render (sync: false), nunca en el codigo ni en la APK.
 
@@ -17,7 +17,7 @@ services:
       - key: PYTHON_VERSION
         value: "3.12.7"
       # La pegas vos en el panel de Render (Environment). Secreta.
-      - key: ANTHROPIC_API_KEY
+      - key: OPENAI_API_KEY
         sync: false
       # Origenes permitidos. "*" alcanza para la APK; podes restringirlo luego.
       - key: CORS_ORIGINS

@@ -1,4 +1,4 @@
-"""Genera el analisis del deal en lenguaje natural con Claude.
+"""Genera el analisis del deal en lenguaje natural con OpenAI (ChatGPT).
 
 NO es puro: llama a la red. Por eso vive en api/, no en core/. La IA solo
 EXPLICA los numeros que le manda el frontend (ya calculados); no recalcula ni
@@ -9,10 +9,11 @@ from __future__ import annotations
 
 import os
 
-import anthropic
+import openai
 
-# Haiku 4.5: rapido y barato, alcanza para explicar un resultado.
-MODEL = "claude-haiku-4-5"
+# Modelo de OpenAI. gpt-4o-mini es barato y alcanza para explicar un resultado.
+# Se puede cambiar con la variable de entorno OPENAI_MODEL.
+MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 
 SYSTEM = (
     "Sos un analista de inversiones inmobiliarias que evalua deals con el metodo "
@@ -39,18 +40,16 @@ ETIQUETAS = {
 
 
 def credenciales_configuradas() -> bool:
-    """True si hay una API key para llamar a Claude (env)."""
-    return bool(
-        os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")
-    )
+    """True si hay una API key para llamar a OpenAI (env)."""
+    return bool(os.environ.get("OPENAI_API_KEY"))
 
 
 def generar_analisis(nombre: str, result: dict[str, str]) -> str:
-    """Llama a Claude con los numeros del deal y devuelve el analisis en texto.
+    """Llama a OpenAI con los numeros del deal y devuelve el analisis en texto.
 
-    Usa las credenciales del entorno (ANTHROPIC_API_KEY). Puede lanzar
-    anthropic.AuthenticationError si no hay key, o anthropic.APIError ante otros
-    fallos: el endpoint las traduce a una respuesta amable.
+    Usa las credenciales del entorno (OPENAI_API_KEY). Puede lanzar
+    openai.AuthenticationError si la key es invalida, u openai.APIError ante
+    otros fallos: el endpoint las traduce a una respuesta amable.
     """
     lineas = [f"Deal: {nombre or 'sin nombre'}"]
     for clave, etiqueta in ETIQUETAS.items():
@@ -58,11 +57,13 @@ def generar_analisis(nombre: str, result: dict[str, str]) -> str:
             lineas.append(f"{etiqueta}: {result[clave]}")
     datos = "\n".join(lineas)
 
-    client = anthropic.Anthropic()
-    response = client.messages.create(
+    client = openai.OpenAI()
+    response = client.chat.completions.create(
         model=MODEL,
         max_tokens=400,
-        system=SYSTEM,
-        messages=[{"role": "user", "content": datos}],
+        messages=[
+            {"role": "system", "content": SYSTEM},
+            {"role": "user", "content": datos},
+        ],
     )
-    return "".join(b.text for b in response.content if b.type == "text").strip()
+    return (response.choices[0].message.content or "").strip()

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-import anthropic
+import openai
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -111,16 +111,16 @@ def explain(payload: DealExplainRequest) -> DealExplanation:
     if not credenciales_configuradas():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="El analisis con IA no esta configurado (falta ANTHROPIC_API_KEY).",
+            detail="El analisis con IA no esta configurado (falta OPENAI_API_KEY).",
         )
     try:
         analisis = generar_analisis(payload.name, payload.result)
-    except anthropic.AuthenticationError:
+    except openai.AuthenticationError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="El analisis con IA no esta configurado (falta la API key).",
         )
-    except anthropic.APIError:
+    except openai.APIError:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="No se pudo generar el analisis. Intenta de nuevo.",
