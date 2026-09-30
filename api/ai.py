@@ -29,7 +29,10 @@ SYSTEM = (
     "conviene.\n"
     "Usa los montos tal como te los doy (ya vienen con formato $) de forma "
     "natural; NO leas numeros crudos ni con decimales, y NO inventes ni recalcules "
-    "nada: usa solo lo que te paso."
+    "nada: usa solo lo que te paso. "
+    "IMPORTANTE: escribi SIEMPRE los montos con punto como separador de miles y el "
+    "signo $ adelante, tal cual te los paso (por ejemplo $135.000 o -$5.000). "
+    "Nunca uses la coma como separador de miles."
 )
 
 # Claves conocidas del resultado y como nombrarlas en el prompt.
