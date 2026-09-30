@@ -7,9 +7,10 @@ import { evaluateLocal } from "./calc.js";
 const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
 export async function evaluateDeal(deal) {
-  // Demo estatico: en produccion SIN backend configurado, calcula en el
-  // navegador (espejo de core). En dev o con VITE_API_URL, usa la API real.
-  if (import.meta.env.PROD && !API_BASE) {
+  // App standalone (APK y dev sin backend): calcula en el dispositivo con el
+  // espejo de core. Solo pega a la red si se configura VITE_API_URL (para
+  // reconectar el backend, ej. guardar/listar deals).
+  if (!API_BASE) {
     return evaluateLocal(deal);
   }
 
@@ -22,4 +23,31 @@ export async function evaluateDeal(deal) {
     throw new Error(`La API respondio ${response.status}`);
   }
   return response.json();
+}
+
+// Pide el analisis con IA. Siempre necesita el backend (no hay version local):
+// en dev pega por el proxy a localhost:8000; en produccion, a VITE_API_URL.
+export async function explainDeal(name, result) {
+  let response;
+  try {
+    response = await fetch(`${API_BASE}/deals/explain`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name || "", result }),
+    });
+  } catch {
+    throw new Error("Necesita conexión al servidor para el análisis con IA.");
+  }
+  if (!response.ok) {
+    let detalle = `No se pudo generar el análisis (${response.status}).`;
+    try {
+      const data = await response.json();
+      if (data && data.detail) detalle = data.detail;
+    } catch {
+      // sin cuerpo JSON: dejamos el mensaje por defecto
+    }
+    throw new Error(detalle);
+  }
+  const data = await response.json();
+  return data.analisis;
 }

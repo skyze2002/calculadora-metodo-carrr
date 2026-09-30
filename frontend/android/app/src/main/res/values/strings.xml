@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Calculadora BRRRR</string>
+    <string name="title_activity_main">Calculadora BRRRR</string>
+    <string name="package_name">com.skyze.brrrr</string>
+    <string name="custom_url_scheme">com.skyze.brrrr</string>
+</resources>

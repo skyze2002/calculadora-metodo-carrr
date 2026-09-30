@@ -60,6 +60,22 @@ class DealResultOut(BaseModel):
     trapped_cash: Money
 
 
+class DealExplainRequest(BaseModel):
+    """Entrada del analisis con IA: nombre + el resultado ya calculado.
+
+    El frontend manda los montos que calculo (strings), la IA no recalcula.
+    """
+
+    name: str = ""
+    result: dict[str, str] = Field(default_factory=dict)
+
+
+class DealExplanation(BaseModel):
+    """Analisis del deal en lenguaje natural generado por la IA."""
+
+    analisis: str
+
+
 class DealOut(BaseModel):
     """Un deal guardado: sus datos de entrada mas el resultado recalculado.
 

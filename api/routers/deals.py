@@ -11,10 +11,12 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+import anthropic
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from api.ai import credenciales_configuradas, generar_analisis
 from core.calculator import evaluate_deal
 from core.models import (
     BankRefinance,
@@ -24,7 +26,13 @@ from core.models import (
 )
 from db.models import Deal
 from db.session import get_session
-from schemas.deal import DealCreate, DealOut, DealResultOut
+from schemas.deal import (
+    DealCreate,
+    DealExplainRequest,
+    DealExplanation,
+    DealOut,
+    DealResultOut,
+)
 
 router = APIRouter(prefix="/deals", tags=["deals"])
 
@@ -95,6 +103,29 @@ def evaluate(payload: DealCreate) -> DealResultOut:
     """Evalua un deal y devuelve las metricas. No lo guarda."""
     result = evaluate_deal(_payload_to_domain(payload))
     return DealResultOut.model_validate(result)
+
+
+@router.post("/explain", response_model=DealExplanation)
+def explain(payload: DealExplainRequest) -> DealExplanation:
+    """Genera un analisis del deal con IA a partir del resultado ya calculado."""
+    if not credenciales_configuradas():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="El analisis con IA no esta configurado (falta ANTHROPIC_API_KEY).",
+        )
+    try:
+        analisis = generar_analisis(payload.name, payload.result)
+    except anthropic.AuthenticationError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="El analisis con IA no esta configurado (falta la API key).",
+        )
+    except anthropic.APIError:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="No se pudo generar el analisis. Intenta de nuevo.",
+        )
+    return DealExplanation(analisis=analisis)
 
 
 @router.post("", response_model=DealOut, status_code=status.HTTP_201_CREATED)

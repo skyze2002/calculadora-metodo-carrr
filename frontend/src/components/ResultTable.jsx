@@ -3,13 +3,10 @@
 import { formatMoney } from "../format.js";
 
 const FILAS = [
-  ["private_loan_amount", "Prestamo privado"],
+  ["private_loan_amount", "Total del préstamo"],
   ["down_payment", "Aporte inicial"],
-  ["points_amount", "Puntos"],
-  ["monthly_interest", "Interes mensual"],
-  ["payoff", "Payoff al prestamista"],
-  ["refinance_loan_amount", "Prestamo del refi"],
-  ["cash_out", "Cash out del banco"],
+  ["refinance_loan_amount", "Préstamo del refi"],
+  ["cash_out", "Dinero devuelto por el banco"],
   ["total_invested", "Total invertido"],
 ];
 

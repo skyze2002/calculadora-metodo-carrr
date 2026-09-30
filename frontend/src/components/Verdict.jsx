@@ -15,20 +15,23 @@ function veredicto(trappedStr) {
   if (atrapado <= 0) {
     return {
       color: "var(--color-bueno)",
+      colorSuave: "#CDEFD9",
       chip: "El deal sirve",
       texto:
-        "El refi devuelve todo lo que pusiste. El capital queda libre para el proximo deal.",
+        "El refi devuelve todo lo que pusiste. El capital queda libre para el próximo deal.",
     };
   }
   if (atrapado <= UMBRAL) {
     return {
-      color: "var(--color-accent-300)",
-      chip: "Al limite",
-      texto: `Quedan ${monto} inmovilizados. Negocia LTC o baja el rehab para acercarlo a cero.`,
+      color: "#E8590C",
+      colorSuave: "#FFD9BF",
+      chip: "Al límite",
+      texto: `Quedan ${monto} inmovilizados. Negociá LTC o bajá el rehab para acercarlo a cero.`,
     };
   }
   return {
     color: "var(--color-malo)",
+    colorSuave: "#F8CFCF",
     chip: "No sirve",
     texto: `Quedan ${monto} inmovilizados: demasiado capital atado a esta propiedad.`,
   };
@@ -45,10 +48,10 @@ function recupero(cashOut, totalInvested) {
 export default function Verdict({ result }) {
   const v = veredicto(result.trapped_cash);
   return (
-    <section className="verdict">
+    <section className="verdict" style={{ borderColor: v.colorSuave }}>
       <div className="verdict-top">
         <span className="verdict-kicker">Dinero atrapado</span>
-        <span className="verdict-chip" style={{ color: v.color }}>
+        <span className="verdict-chip" style={{ background: v.color }}>
           {v.chip}
         </span>
       </div>
@@ -65,7 +68,7 @@ export default function Verdict({ result }) {
           <span className="value">{formatMoney(result.total_invested)}</span>
         </div>
         <div className="verdict-metric">
-          <span className="label">Cash out</span>
+          <span className="label">Dinero devuelto</span>
           <span className="value">{formatMoney(result.cash_out)}</span>
         </div>
         <div className="verdict-metric">

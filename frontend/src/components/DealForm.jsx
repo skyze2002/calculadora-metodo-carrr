@@ -14,17 +14,14 @@ const SECCIONES = [
   {
     titulo: "Prestamista privado",
     campos: [
-      { name: "ltc", label: "LTC", ayuda: "0.90 = 90%" },
-      { name: "monthly_interest_rate", label: "Interes mensual", ayuda: "0.005 = 0,5%" },
-      { name: "points", label: "Puntos", ayuda: "0.02 = 2%" },
+      { name: "loan_total", label: "Total del préstamo", ayuda: "$" },
+      { name: "closing_fee", label: "Costes de cierre", ayuda: "$" },
     ],
   },
   {
     titulo: "Refi con el banco",
     campos: [
       { name: "ltv", label: "LTV", ayuda: "0.75 = 75%" },
-      { name: "seasoning_months", label: "Seasoning", ayuda: "meses" },
-      { name: "closing_costs", label: "Costos de cierre", ayuda: "$" },
     ],
   },
 ];
@@ -54,10 +51,14 @@ export default function DealForm({
   return (
     <form className="form-panel" onSubmit={onSubmit}>
       <header>
+        <span className="form-kicker">
+          <span className="form-kicker-dot" />
+          Calculadora BRRRR
+        </span>
         <h1 className="form-title">El deal</h1>
         <p className="form-intro">
-          Los porcentajes van como fraccion (0.90 = 90%). El calculo lo hace el
-          backend; aca solo se muestran los resultados.
+          Los porcentajes van como fracción (0.90 = 90%). Cargá los datos y tocá
+          Evaluar para ver cuánto capital queda atrapado.
         </p>
       </header>
 
@@ -70,7 +71,16 @@ export default function DealForm({
         {SECCIONES.map((seccion) => (
           <section className="section" key={seccion.titulo}>
             <h2 className="section-header">{seccion.titulo}</h2>
-            <div className="section-fields">
+            <div
+              className={
+                "section-fields" +
+                (seccion.campos.length === 1
+                  ? " single"
+                  : seccion.campos.length === 2
+                    ? " two"
+                    : "")
+              }
+            >
               {seccion.campos.map((campo) => (
                 <Campo
                   key={campo.name}

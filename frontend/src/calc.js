@@ -1,13 +1,17 @@
-// ESPEJO de core/calculator.py — SOLO para el demo estatico sin backend.
+// Calculo local de la app (standalone, sin backend).
 //
-// Se usa unicamente cuando el sitio esta en produccion y NO hay VITE_API_URL
-// configurada (ver api.js). En dev y cuando conectes el backend real, este
-// archivo NO se usa: manda la API, que es la fuente de verdad del calculo.
+// Modelo simplificado que estamos armando con el cliente:
+// - El prestamista privado presta un total (loan_total).
+// - Lo que se lleva el prestamista el dia de cierre = 20% del PRECIO DE COMPRA
+//   + los costes de cierre que ingresa el usuario (closing_fee).
 //
-// ROMPE la regla 4 a proposito, como atajo temporal para mostrarle la
-// calculadora a un cliente sin levantar backend. Mantener en sync con core.
+// El resto (refi, cash out, dinero atrapado) queda por ahora con el modelo
+// anterior, alimentado por loan_total; lo vamos a reformar en el proximo paso.
 
-// Redondeo a centavos, medio hacia arriba (como ROUND_HALF_UP del backend).
+// Porcentaje fijo que se lleva el prestamista sobre el precio de compra.
+const LENDER_RATE = 0.2;
+
+// Redondeo a centavos, medio hacia arriba (como el backend).
 function round2(n) {
   return (Math.round((n + Number.EPSILON) * 100) / 100).toFixed(2);
 }
@@ -15,23 +19,29 @@ function round2(n) {
 export function evaluateLocal(deal) {
   const num = (v) => Number(v || 0);
 
+  const loanTotal = num(deal.loan_total);
   const totalCost = num(deal.purchase_price) + num(deal.rehab_budget);
-  const privateLoan = totalCost * num(deal.ltc);
-  const downPayment = totalCost - privateLoan;
-  const pointsAmount = privateLoan * num(deal.points);
-  const monthlyInterest = privateLoan * num(deal.monthly_interest_rate);
-  const payoff = privateLoan + pointsAmount;
+
+  // Lo que se lleva el prestamista el dia de cierre: 20% del precio de compra
+  // + los costes de cierre ingresados.
+  const lenderClosing = num(deal.purchase_price) * LENDER_RATE + num(deal.closing_fee);
+
+  const privateLoan = loanTotal;
+  const downPayment = Math.max(totalCost - loanTotal, 0);
+  // El pago al prestamista es el total del prestamo (su ganancia va aparte
+  // en lender_closing, no se suma aca).
+  const payoff = loanTotal;
+
   const refi = num(deal.arv) * num(deal.ltv);
-  const cashOut = refi - payoff - num(deal.closing_costs);
+  const cashOut = refi - payoff;
   const totalInvested = downPayment;
   const trapped = totalInvested - cashOut;
 
   return {
     total_cost: round2(totalCost),
     private_loan_amount: round2(privateLoan),
+    lender_closing: round2(lenderClosing),
     down_payment: round2(downPayment),
-    points_amount: round2(pointsAmount),
-    monthly_interest: round2(monthlyInterest),
     payoff: round2(payoff),
     refinance_loan_amount: round2(refi),
     cash_out: round2(cashOut),

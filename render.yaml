@@ -1,0 +1,24 @@
+# Blueprint de Render para el backend de la Calculadora BRRRR.
+# Deploy minimo: expone el endpoint POST /deals/explain que llama a Claude para
+# el analisis con IA. NO usa Postgres. La API key va como variable SECRETA en el
+# panel de Render (sync: false), nunca en el codigo ni en la APK.
+
+services:
+  - type: web
+    name: brrrr-backend
+    runtime: python
+    plan: free
+    region: oregon
+    rootDir: .
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      # La pegas vos en el panel de Render (Environment). Secreta.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # Origenes permitidos. "*" alcanza para la APK; podes restringirlo luego.
+      - key: CORS_ORIGINS
+        value: "*"

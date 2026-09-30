@@ -45,7 +45,7 @@ function Tramo({ titulo, total, ancho, segmentos }) {
   );
 }
 
-export default function Waterfall({ result, closingCosts }) {
+export default function Waterfall({ result }) {
   // Las dos barras comparten escala: el ancho de cada tramo es su total sobre el
   // mayor de los dos totales, con un piso de 12% para que se lean comparables.
   const escala =
@@ -53,20 +53,20 @@ export default function Waterfall({ result, closingCosts }) {
   const anchoTramo = (total) => Math.max((Number(total) / escala) * 100, 12);
 
   const tramo1 = {
-    titulo: "Con que se compra y se repara",
+    titulo: "Con qué se compra y se repara",
     total: result.total_cost,
     ancho: anchoTramo(result.total_cost),
     segmentos: [
       {
-        label: "Prestamo privado",
+        label: "Préstamo privado",
         monto: result.private_loan_amount,
-        color: "var(--color-accent-700)",
+        color: "#C2410C",
         w: porcentaje(result.private_loan_amount, result.total_cost),
       },
       {
         label: "Aporte inicial",
         monto: result.down_payment,
-        color: "var(--color-accent-400)",
+        color: "#FFA05C",
         w: porcentaje(result.down_payment, result.total_cost),
       },
     ],
@@ -75,26 +75,20 @@ export default function Waterfall({ result, closingCosts }) {
   // cash_out se clampea a >= 0 solo para el ancho de la barra.
   const cashOutBarra = Math.max(0, Number(result.cash_out));
   const tramo2 = {
-    titulo: "A donde va el prestamo del refi",
+    titulo: "A dónde va el préstamo del refi",
     total: result.refinance_loan_amount,
     ancho: anchoTramo(result.refinance_loan_amount),
     segmentos: [
       {
-        label: "Payoff",
+        label: "Pago al prestamista",
         monto: result.payoff,
-        color: "var(--color-accent-700)",
+        color: "#C2410C",
         w: porcentaje(result.payoff, result.refinance_loan_amount),
       },
       {
-        label: "Costos de cierre",
-        monto: closingCosts,
-        color: "var(--color-neutral-700)",
-        w: porcentaje(closingCosts, result.refinance_loan_amount),
-      },
-      {
-        label: "Cash out",
+        label: "Dinero devuelto",
         monto: result.cash_out,
-        color: "var(--color-bueno)",
+        color: "#22B36B",
         w: porcentaje(cashOutBarra, result.refinance_loan_amount),
       },
     ],

@@ -16,5 +16,9 @@ node_modules/
 frontend/dist/
 frontend/.vite/
 
+# Binarios de la app Android (se generan con el build, no van al repo)
+*.apk
+*.aab
+
 # Sistema
 .DS_Store
