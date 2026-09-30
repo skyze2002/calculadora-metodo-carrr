@@ -8,6 +8,7 @@ inventa montos. Asi el endpoint no depende del calculo del backend.
 from __future__ import annotations
 
 import os
+from decimal import Decimal, InvalidOperation
 
 import openai
 
@@ -16,14 +17,19 @@ import openai
 MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 
 SYSTEM = (
-    "Sos un analista de inversiones inmobiliarias que evalua deals con el metodo "
-    "BRRRR. Hablas en espanol rioplatense (de vos), claro y directo. "
-    "Te paso los numeros YA CALCULADOS de un deal. Explicale al inversor, en 2 a "
-    "4 frases, si el deal sirve y por que, y dale 1 o 2 sugerencias concretas y "
-    "accionables. La metrica clave es el dinero atrapado: mientras mas cerca de "
-    "cero (o negativo), mejor. "
-    "NO inventes ni recalcules numeros: usa solo los que te doy. No uses vinetas "
-    "ni titulos: un solo parrafo corto y natural."
+    "Sos un asesor inmobiliario que le explica un deal BRRRR a un inversor, con "
+    "tono cercano, claro y profesional (hablas de vos, espanol rioplatense). "
+    "Te paso los numeros YA CALCULADOS del deal. Escribi UN SOLO parrafo de 2 a 4 "
+    "frases, sin vinetas ni titulos, que diga si el deal conviene y por que, y "
+    "cierre con una sugerencia concreta y accionable.\n"
+    "La metrica clave es el DINERO ATRAPADO (capital que queda inmovilizado en la "
+    "propiedad): si es cero o negativo el deal es excelente, porque recuperas todo "
+    "lo que pusiste; y si es negativo, ademas te sobra ese monto libre para el "
+    "proximo deal. Un valor positivo chico esta al limite; uno positivo grande no "
+    "conviene.\n"
+    "Usa los montos tal como te los doy (ya vienen con formato $) de forma "
+    "natural; NO leas numeros crudos ni con decimales, y NO inventes ni recalcules "
+    "nada: usa solo lo que te paso."
 )
 
 # Claves conocidas del resultado y como nombrarlas en el prompt.
@@ -44,6 +50,21 @@ def credenciales_configuradas() -> bool:
     return bool(os.environ.get("OPENAI_API_KEY"))
 
 
+def _money(valor: str) -> str:
+    """Formatea un monto para que la IA lo lea lindo: '-5000.00' -> '-$5.000'.
+
+    Redondea a entero (los centavos no aportan al relato) y usa punto como
+    separador de miles. Si no parsea, devuelve el valor tal cual.
+    """
+    try:
+        d = Decimal(str(valor))
+    except (InvalidOperation, ValueError, TypeError):
+        return str(valor)
+    signo = "-" if d < 0 else ""
+    entero = int(abs(d).to_integral_value())
+    return f"{signo}${entero:,}".replace(",", ".")
+
+
 def generar_analisis(nombre: str, result: dict[str, str]) -> str:
     """Llama a OpenAI con los numeros del deal y devuelve el analisis en texto.
 
@@ -54,7 +75,7 @@ def generar_analisis(nombre: str, result: dict[str, str]) -> str:
     lineas = [f"Deal: {nombre or 'sin nombre'}"]
     for clave, etiqueta in ETIQUETAS.items():
         if clave in result and result[clave] is not None:
-            lineas.append(f"{etiqueta}: {result[clave]}")
+            lineas.append(f"{etiqueta}: {_money(result[clave])}")
     datos = "\n".join(lineas)
 
     client = openai.OpenAI()
