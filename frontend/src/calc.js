@@ -19,12 +19,14 @@ function round2(n) {
 export function evaluateLocal(deal) {
   const num = (v) => Number(v || 0);
 
+  const purchase = num(deal.purchase_price);
+  const rehab = num(deal.rehab_budget);
   const loanTotal = num(deal.loan_total);
-  const totalCost = num(deal.purchase_price) + num(deal.rehab_budget);
+  const totalCost = purchase + rehab;
 
   // Lo que se lleva el prestamista el dia de cierre: 20% del precio de compra
   // + los costes de cierre ingresados.
-  const lenderClosing = num(deal.purchase_price) * LENDER_RATE + num(deal.closing_fee);
+  const lenderClosing = purchase * LENDER_RATE + num(deal.closing_fee);
 
   const privateLoan = loanTotal;
   const downPayment = Math.max(totalCost - loanTotal, 0);
@@ -37,8 +39,16 @@ export function evaluateLocal(deal) {
   const totalInvested = downPayment;
   const trapped = totalInvested - cashOut;
 
+  // Objetivos para que el deal cierre (dinero atrapado <= 0): el deal cierra
+  // cuando compra + rehab <= refi. De ahi, manteniendo uno fijo, el maximo del
+  // otro. Se usan para la recomendacion cuando el deal es malo.
+  const targetPurchase = Math.max(refi - rehab, 0);
+  const targetRehab = Math.max(refi - purchase, 0);
+
   return {
     total_cost: round2(totalCost),
+    purchase_price: round2(purchase),
+    rehab_budget: round2(rehab),
     private_loan_amount: round2(privateLoan),
     lender_closing: round2(lenderClosing),
     down_payment: round2(downPayment),
@@ -47,5 +57,7 @@ export function evaluateLocal(deal) {
     cash_out: round2(cashOut),
     total_invested: round2(totalInvested),
     trapped_cash: round2(trapped),
+    target_purchase: round2(targetPurchase),
+    target_rehab: round2(targetRehab),
   };
 }
