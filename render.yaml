@@ -19,6 +19,11 @@ services:
       # La pegas vos en el panel de Render (Environment). Secreta.
       - key: OPENAI_API_KEY
         sync: false
-      # Origenes permitidos. "*" alcanza para la APK; podes restringirlo luego.
+      # Llave de app: debe coincidir con VITE_APP_KEY del frontend. La pegas vos
+      # en el panel de Render (Environment). Cierra la API a extranos.
+      - key: APP_KEY
+        sync: false
+      # Origenes permitidos (lista separada por comas). Incluye los de la APK
+      # (WebView) y, si usas la web, agregale tu dominio de Vercel.
       - key: CORS_ORIGINS
-        value: "*"
+        value: "https://localhost,capacitor://localhost,http://localhost"

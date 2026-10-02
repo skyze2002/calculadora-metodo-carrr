@@ -6,6 +6,17 @@ import { evaluateLocal } from "./calc.js";
 // En produccion (Vercel) se define VITE_API_URL con la URL del backend externo.
 const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
+// Llave de app: se hornea en el build (VITE_APP_KEY) y viaja en cada pedido de
+// IA para que el backend acepte solo a nuestra app. En dev queda vacia.
+const APP_KEY = import.meta.env.VITE_APP_KEY ?? "";
+
+// Headers de los pedidos de IA: JSON + la llave de app si esta configurada.
+function headersIa() {
+  const h = { "Content-Type": "application/json" };
+  if (APP_KEY) h["X-App-Key"] = APP_KEY;
+  return h;
+}
+
 export async function evaluateDeal(deal) {
   // El calculo es SIEMPRE local (offline) y es la fuente de verdad. El backend
   // (VITE_API_URL) se usa solo para el analisis con IA, ver explainDeal.
@@ -19,7 +30,7 @@ export async function explainDeal(name, result) {
   try {
     response = await fetch(`${API_BASE}/deals/explain`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: headersIa(),
       body: JSON.stringify({ name: name || "", result }),
     });
   } catch {
@@ -46,7 +57,7 @@ export async function extractDeal(imageDataUrl) {
   try {
     response = await fetch(`${API_BASE}/deals/extract`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: headersIa(),
       body: JSON.stringify({ image: imageDataUrl }),
     });
   } catch {
@@ -73,7 +84,7 @@ export async function extractDealUrl(url) {
   try {
     response = await fetch(`${API_BASE}/deals/extract-url`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: headersIa(),
       body: JSON.stringify({ url }),
     });
   } catch {

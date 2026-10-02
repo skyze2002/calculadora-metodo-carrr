@@ -8,10 +8,13 @@ inventa montos. Asi el endpoint no depende del calculo del backend.
 from __future__ import annotations
 
 import html
+import ipaddress
 import json
 import os
 import re
+import socket
 from decimal import Decimal, InvalidOperation
+from urllib.parse import urljoin, urlparse
 
 import httpx
 import openai
@@ -220,6 +223,81 @@ _UA = (
     "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 )
 
+# Topes de la descarga del aviso: tamano maximo y redirecciones permitidas.
+MAX_PAGE_BYTES = 2_000_000
+MAX_REDIRECTS = 3
+
+
+def _es_host_publico(host: str) -> bool:
+    """True solo si TODAS las IPs del host son publicas (anti-SSRF).
+
+    Resuelve el nombre y rechaza loopback, redes privadas, link-local (incluye
+    la IP de metadata del cloud 169.254.169.254), reservadas y multicast. Asi el
+    backend no puede ser usado para alcanzar servicios internos.
+    """
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except socket.gaierror:
+        return False
+    for info in infos:
+        try:
+            ip = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            return False
+        if (
+            not ip.is_global
+            or ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_multicast
+            or ip.is_unspecified
+        ):
+            return False
+    return True
+
+
+def _descargar_seguro(url: str) -> str:
+    """Descarga la pagina validando cada salto contra SSRF y con tope de tamano.
+
+    No deja que httpx siga redirecciones solo: las sigue a mano (hasta
+    MAX_REDIRECTS) validando el host de cada destino. Corta la lectura al llegar
+    a MAX_PAGE_BYTES. Lanza ValueError si la URL apunta a un destino no
+    permitido; httpx.HTTPError ante fallos de red.
+    """
+    actual = url
+    with httpx.Client(
+        follow_redirects=False,
+        timeout=15.0,
+        headers={"User-Agent": _UA, "Accept-Language": "es,en;q=0.8"},
+    ) as cliente:
+        for _ in range(MAX_REDIRECTS + 1):
+            parsed = urlparse(actual)
+            if parsed.scheme not in ("http", "https") or not parsed.hostname:
+                raise ValueError("URL no permitida.")
+            if not _es_host_publico(parsed.hostname):
+                raise ValueError("El link apunta a un destino interno no permitido.")
+
+            with cliente.stream("GET", actual) as resp:
+                if resp.is_redirect:
+                    destino = resp.headers.get("location")
+                    if not destino:
+                        raise ValueError("Redireccion invalida.")
+                    actual = urljoin(actual, destino)
+                    continue
+                resp.raise_for_status()
+                trozos: list[bytes] = []
+                total = 0
+                for trozo in resp.iter_bytes():
+                    total += len(trozo)
+                    trozos.append(trozo)
+                    if total >= MAX_PAGE_BYTES:
+                        break
+                crudo = b"".join(trozos)[:MAX_PAGE_BYTES]
+                texto = crudo.decode(resp.encoding or "utf-8", errors="ignore")
+                return _condensar_pagina(texto)
+    raise ValueError("Demasiadas redirecciones.")
+
 
 def _limpiar_texto(s: str) -> str:
     return html.unescape(re.sub(r"\s+", " ", s)).strip()
@@ -260,14 +338,7 @@ def extraer_deal_url(url: str) -> dict[str, str]:
     Puede lanzar httpx.HTTPError si no se puede descargar; openai.* si falla la
     IA. El endpoint las traduce a respuestas amables.
     """
-    with httpx.Client(
-        follow_redirects=True,
-        timeout=15.0,
-        headers={"User-Agent": _UA, "Accept-Language": "es,en;q=0.8"},
-    ) as cliente:
-        resp = cliente.get(url)
-        resp.raise_for_status()
-        contenido = _condensar_pagina(resp.text)
+    contenido = _descargar_seguro(url)
 
     client = openai.OpenAI()
     response = client.chat.completions.create(

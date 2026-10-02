@@ -13,7 +13,7 @@ from decimal import Decimal
 
 import httpx
 import openai
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -23,6 +23,8 @@ from api.ai import (
     extraer_deal_url,
     generar_analisis,
 )
+from api.limiter import limiter
+from api.security import requiere_app_key
 from core.calculator import evaluate_deal
 from core.models import (
     BankRefinance,
@@ -44,6 +46,10 @@ from schemas.deal import (
 )
 
 router = APIRouter(prefix="/deals", tags=["deals"])
+
+# Tope del data URL de la imagen (~6,5 MB de imagen en base64). El frontend ya
+# achica a 1600px/JPEG, asi que esto es un techo de seguridad contra abusos.
+MAX_IMAGE_CHARS = 9_000_000
 
 
 def _payload_to_domain(payload: DealCreate) -> DealInput:
@@ -114,8 +120,13 @@ def evaluate(payload: DealCreate) -> DealResultOut:
     return DealResultOut.model_validate(result)
 
 
-@router.post("/explain", response_model=DealExplanation)
-def explain(payload: DealExplainRequest) -> DealExplanation:
+@router.post(
+    "/explain",
+    response_model=DealExplanation,
+    dependencies=[Depends(requiere_app_key)],
+)
+@limiter.limit("10/minute")
+def explain(request: Request, payload: DealExplainRequest) -> DealExplanation:
     """Genera un analisis del deal con IA a partir del resultado ya calculado."""
     if not credenciales_configuradas():
         raise HTTPException(
@@ -137,8 +148,13 @@ def explain(payload: DealExplainRequest) -> DealExplanation:
     return DealExplanation(analisis=analisis)
 
 
-@router.post("/extract", response_model=DealExtractResult)
-def extract(payload: DealExtractRequest) -> DealExtractResult:
+@router.post(
+    "/extract",
+    response_model=DealExtractResult,
+    dependencies=[Depends(requiere_app_key)],
+)
+@limiter.limit("5/minute")
+def extract(request: Request, payload: DealExtractRequest) -> DealExtractResult:
     """Autocompleta el deal leyendo una foto de un aviso (vision)."""
     if not credenciales_configuradas():
         raise HTTPException(
@@ -148,6 +164,11 @@ def extract(payload: DealExtractRequest) -> DealExtractResult:
     if not payload.image:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Falta la imagen."
+        )
+    if len(payload.image) > MAX_IMAGE_CHARS:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="La imagen es demasiado grande.",
         )
     try:
         fields = extraer_deal(payload.image)
@@ -164,8 +185,15 @@ def extract(payload: DealExtractRequest) -> DealExtractResult:
     return DealExtractResult(fields=fields)
 
 
-@router.post("/extract-url", response_model=DealExtractResult)
-def extract_url(payload: DealExtractUrlRequest) -> DealExtractResult:
+@router.post(
+    "/extract-url",
+    response_model=DealExtractResult,
+    dependencies=[Depends(requiere_app_key)],
+)
+@limiter.limit("10/minute")
+def extract_url(
+    request: Request, payload: DealExtractUrlRequest
+) -> DealExtractResult:
     """Autocompleta el deal leyendo el link de un aviso."""
     if not credenciales_configuradas():
         raise HTTPException(

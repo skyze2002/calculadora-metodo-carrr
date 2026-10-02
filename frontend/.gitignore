@@ -1,3 +1,6 @@
 node_modules/
 dist/
 .vite/
+
+# Archivos de entorno locales con secretos (llave de app, etc.). NO commitear.
+*.local
