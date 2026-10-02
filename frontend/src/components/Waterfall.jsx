@@ -1,10 +1,9 @@
 // Waterfall: dos tramos con barra apilada. Los anchos son geometria de
-// presentacion (divs), no calculo de plata: los montos que se muestran salen
-// tal cual de la API. closing_costs es un input, viene del deal evaluado.
+// presentacion (divs), no calculo de plata. Hover resalta un segmento.
 
+import { useState } from "react";
 import { formatMoney } from "../format.js";
 
-// Porcentaje de una parte sobre el total del tramo (para el ancho del segmento).
 function porcentaje(parte, total) {
   const base = Number(total);
   if (!base) return 0;
@@ -12,6 +11,7 @@ function porcentaje(parte, total) {
 }
 
 function Tramo({ titulo, total, ancho, segmentos }) {
+  const [hover, setHover] = useState(null);
   return (
     <div className="tramo">
       <div className="tramo-head">
@@ -21,22 +21,34 @@ function Tramo({ titulo, total, ancho, segmentos }) {
 
       <div className="bar-scale" style={{ width: `${ancho}%` }}>
         <div className="bar">
-          {segmentos.map((s) => (
+          {segmentos.map((s, i) => (
             <div
               key={s.label}
               className="bar-seg"
-              style={{ width: `${s.w}%`, background: s.color }}
+              style={{
+                width: `${s.w}%`,
+                background: s.color,
+                opacity: hover !== null && hover !== i ? 0.35 : 1,
+              }}
+              onMouseEnter={() => setHover(i)}
+              onMouseLeave={() => setHover(null)}
             />
           ))}
         </div>
       </div>
 
       <div className="legend">
-        {segmentos.map((s) => (
-          <div className="legend-row" key={s.label}>
+        {segmentos.map((s, i) => (
+          <div
+            key={s.label}
+            className={"legend-row" + (hover === i ? " activa" : "")}
+            onMouseEnter={() => setHover(i)}
+            onMouseLeave={() => setHover(null)}
+          >
             <span className="legend-swatch" style={{ background: s.color }} />
             <span className="legend-label">{s.label}</span>
             <span className="legend-fill" />
+            <span className="legend-pct">{Math.round(s.w)}%</span>
             <span className="legend-amount">{formatMoney(s.monto)}</span>
           </div>
         ))}
@@ -46,8 +58,6 @@ function Tramo({ titulo, total, ancho, segmentos }) {
 }
 
 export default function Waterfall({ result }) {
-  // Las dos barras comparten escala: el ancho de cada tramo es su total sobre el
-  // mayor de los dos totales, con un piso de 12% para que se lean comparables.
   const escala =
     Math.max(Number(result.total_cost), Number(result.refinance_loan_amount)) || 1;
   const anchoTramo = (total) => Math.max((Number(total) / escala) * 100, 12);
@@ -64,7 +74,7 @@ export default function Waterfall({ result }) {
         w: porcentaje(result.private_loan_amount, result.total_cost),
       },
       {
-        label: "Aporte inicial",
+        label: "Tu aporte",
         monto: result.down_payment,
         color: "#FFA05C",
         w: porcentaje(result.down_payment, result.total_cost),
@@ -72,7 +82,6 @@ export default function Waterfall({ result }) {
     ],
   };
 
-  // cash_out se clampea a >= 0 solo para el ancho de la barra.
   const cashOutBarra = Math.max(0, Number(result.cash_out));
   const tramo2 = {
     titulo: "A dónde va el préstamo del refi",
@@ -86,7 +95,7 @@ export default function Waterfall({ result }) {
         w: porcentaje(result.payoff, result.refinance_loan_amount),
       },
       {
-        label: "Dinero devuelto",
+        label: "Vuelve a tu bolsillo",
         monto: result.cash_out,
         color: "#22B36B",
         w: porcentaje(cashOutBarra, result.refinance_loan_amount),

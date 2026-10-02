@@ -58,6 +58,7 @@ class DealResultOut(BaseModel):
     cash_out: Money
     total_invested: Money
     trapped_cash: Money
+    target_arv: Money
 
 
 class DealExplainRequest(BaseModel):

@@ -44,11 +44,15 @@ export function evaluateLocal(deal) {
   // otro. Se usan para la recomendacion cuando el deal es malo.
   const targetPurchase = Math.max(refi - rehab, 0);
   const targetRehab = Math.max(refi - purchase, 0);
+  // ARV necesario para que el deal cierre: (compra + rehab) / LTV.
+  const ltv = num(deal.ltv);
+  const targetArv = ltv > 0 ? totalCost / ltv : 0;
 
   return {
     total_cost: round2(totalCost),
     purchase_price: round2(purchase),
     rehab_budget: round2(rehab),
+    arv: round2(num(deal.arv)),
     private_loan_amount: round2(privateLoan),
     lender_closing: round2(lenderClosing),
     down_payment: round2(downPayment),
@@ -59,5 +63,6 @@ export function evaluateLocal(deal) {
     trapped_cash: round2(trapped),
     target_purchase: round2(targetPurchase),
     target_rehab: round2(targetRehab),
+    target_arv: round2(targetArv),
   };
 }

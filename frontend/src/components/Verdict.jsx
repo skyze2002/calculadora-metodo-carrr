@@ -1,52 +1,44 @@
-// Tarjeta de veredicto: el dinero atrapado en grande, un chip, una frase que
-// dice que hacer, y tres metricas al pie.
+// Tarjeta de veredicto: dinero atrapado en grande, chip de cambio vs. el deal
+// base, termometro de display y metricas al pie.
 
 import { formatMoney } from "../format.js";
+import { useAnimatedNumber } from "../useAnimatedNumber.js";
 
-// Umbral (en pesos) para el estado intermedio "al limite".
 const UMBRAL = 5000;
 
-// Decide color, chip y texto segun el dinero atrapado. La comparacion con el
-// umbral es una decision de presentacion (que mensaje mostrar), no un calculo
-// de plata: los montos que se muestran salen tal cual de la API.
 function veredicto(trappedStr) {
   const atrapado = Number(trappedStr);
-  const monto = formatMoney(trappedStr);
   if (atrapado <= 0) {
-    return {
-      color: "var(--color-bueno)",
-      colorSuave: "#CDEFD9",
-      chip: "El deal sirve",
-      texto:
-        "El refi devuelve todo lo que pusiste. El capital queda libre para el próximo deal.",
-    };
+    return { color: "var(--color-bueno)", colorSuave: "#CDEFD9", chip: "El deal sirve" };
   }
   if (atrapado <= UMBRAL) {
-    return {
-      color: "#E8590C",
-      colorSuave: "#FFD9BF",
-      chip: "Al límite",
-      texto: `Quedan ${monto} inmovilizados. Negociá LTC o bajá el rehab para acercarlo a cero.`,
-    };
+    return { color: "#E8590C", colorSuave: "#FFD9BF", chip: "Al límite" };
   }
-  return {
-    color: "var(--color-malo)",
-    colorSuave: "#F8CFCF",
-    chip: "No sirve",
-    texto: `Quedan ${monto} inmovilizados: demasiado capital atado a esta propiedad.`,
-  };
+  return { color: "var(--color-malo)", colorSuave: "#F8CFCF", chip: "No sirve" };
 }
 
-// Recupero = cash out / total invertido, en %. Unico calculo de display
-// permitido en el front (regla 4). Se protege la division por cero.
+// Recupero = cash out / total invertido, en %. Calculo de display.
 function recupero(cashOut, totalInvested) {
   const invertido = Number(totalInvested);
   if (!invertido) return "—";
   return `${Math.round((Number(cashOut) / invertido) * 100)}%`;
 }
 
-export default function Verdict({ result }) {
+export default function Verdict({ result, baseTrapped, onDeshacer }) {
   const v = veredicto(result.trapped_cash);
+  const animado = useAnimatedNumber(Number(result.trapped_cash));
+
+  // Chip de cambio vs. el deal base.
+  const actual = Number(result.trapped_cash);
+  const diff = actual - Number(baseTrapped);
+  const hayCambio = Math.abs(diff) >= 1;
+
+  // Termometro (geometria de display).
+  const escala = Math.max(Math.abs(actual) * 1.3, UMBRAL * 4, 20000);
+  const naranjaW = (UMBRAL / escala) * 50;
+  const rojaW = 50 - naranjaW;
+  const markerLeft = Math.min(98, Math.max(2, 50 + (actual / escala) * 50));
+
   return (
     <section className="verdict" style={{ borderColor: v.colorSuave }}>
       <div className="verdict-top">
@@ -57,10 +49,42 @@ export default function Verdict({ result }) {
       </div>
 
       <div className="verdict-amount" style={{ color: v.color }}>
-        {formatMoney(result.trapped_cash)}
+        {formatMoney(animado.toFixed(2))}
       </div>
 
-      <p className="verdict-text">{v.texto}</p>
+      {hayCambio ? (
+        <div className="cambio-row">
+          <span className={"cambio-pill " + (diff < 0 ? "baja" : "sube")}>
+            {diff < 0 ? "↓ " : "↑ "}
+            {formatMoney(Math.abs(diff).toFixed(2))} {diff < 0 ? "menos" : "más"} que
+            al empezar
+          </span>
+          <button type="button" className="deshacer-link" onClick={onDeshacer}>
+            Deshacer cambios
+          </button>
+        </div>
+      ) : (
+        <p className="recalc-note">Se recalcula mientras escribís</p>
+      )}
+
+      <div className="termo">
+        <div className="termo-track">
+          <div className="termo-bar">
+            <div className="termo-zona verde" style={{ flexGrow: 50 }} />
+            <div className="termo-zona naranja" style={{ flexGrow: naranjaW }} />
+            <div className="termo-zona roja" style={{ flexGrow: rojaW }} />
+          </div>
+          <div
+            className="termo-marker"
+            style={{ left: `${markerLeft}%`, borderColor: v.color }}
+          />
+        </div>
+        <div className="termo-labels">
+          <span>Sobra capital</span>
+          <span>$0</span>
+          <span>Queda atrapado</span>
+        </div>
+      </div>
 
       <div className="verdict-foot">
         <div className="verdict-metric">

@@ -21,7 +21,8 @@ function persistir(deals) {
   }
 }
 
-// Guarda un deal nuevo al principio de la lista y devuelve la lista actualizada.
+// Guarda un deal al principio de la lista. Si ya existe uno con el mismo nombre,
+// lo reemplaza en vez de duplicarlo. Devuelve la lista actualizada.
 export function saveDeal({ name, form, trapped }) {
   const id =
     Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -32,7 +33,8 @@ export function saveDeal({ name, form, trapped }) {
     trapped,
     savedAt: new Date().toISOString(),
   };
-  const deals = [nuevo, ...getDeals()];
+  const resto = getDeals().filter((d) => d.name !== name);
+  const deals = [nuevo, ...resto];
   persistir(deals);
   return deals;
 }

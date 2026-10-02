@@ -72,6 +72,9 @@ def evaluate_deal(deal: DealInput) -> DealResult:
     total_invested = down_payment
     trapped_cash = total_invested - cash_out
 
+    # ARV necesario para que el refi cubra el costo total: (compra + rehab) / LTV.
+    target_arv = total_cost / refi.ltv if refi.ltv else Decimal("0")
+
     return DealResult(
         total_cost=_cents(total_cost),
         private_loan_amount=_cents(private_loan_amount),
@@ -83,4 +86,5 @@ def evaluate_deal(deal: DealInput) -> DealResult:
         cash_out=_cents(cash_out),
         total_invested=_cents(total_invested),
         trapped_cash=_cents(trapped_cash),
+        target_arv=_cents(target_arv),
     )

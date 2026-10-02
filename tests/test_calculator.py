@@ -49,6 +49,8 @@ def test_ejemplo_acordado() -> None:
     assert result.cash_out == Decimal("11660.00")
     assert result.total_invested == Decimal("13000.00")
     assert result.trapped_cash == Decimal("1340.00")
+    # ARV objetivo = (compra + rehab) / LTV = 130000 / 0.75.
+    assert result.target_arv == Decimal("173333.33")
 
 
 def test_todo_devuelve_dos_decimales() -> None:

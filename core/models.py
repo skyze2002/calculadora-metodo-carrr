@@ -91,3 +91,5 @@ class DealResult:
     total_invested: Decimal
     # Total invertido menos cash out. La metrica que decide si el deal sirve.
     trapped_cash: Decimal
+    # ARV necesario para que el deal cierre: (compra + rehab) / LTV.
+    target_arv: Decimal
