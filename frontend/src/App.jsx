@@ -4,14 +4,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { evaluateDeal, explainDeal } from "./api.js";
+import { percentToFraction } from "./format.js";
 import AiAnalysis from "./components/AiAnalysis.jsx";
 import BankRefiCalculator from "./components/BankRefiCalculator.jsx";
 import DealForm from "./components/DealForm.jsx";
 import LenderClosing from "./components/LenderClosing.jsx";
+import SavedDeals from "./components/SavedDeals.jsx";
 import Verdict from "./components/Verdict.jsx";
 import Waterfall from "./components/Waterfall.jsx";
 import ResultTable from "./components/ResultTable.jsx";
 import { exportarPDF, puedeCompartir } from "./pdf.js";
+import { deleteDeal, getDeals, saveDeal } from "./storage.js";
 import "./styles.css";
 
 // Deal de ejemplo: se evalua al montar para que el panel nunca aparezca vacio.
@@ -22,7 +25,7 @@ const INICIAL = {
   arv: "180000",
   loan_total: "100000",
   closing_fee: "10000",
-  ltv: "0.75",
+  ltv: "75",
 };
 
 export default function App() {
@@ -37,6 +40,10 @@ export default function App() {
   const [analisis, setAnalisis] = useState(null);
   const [analizando, setAnalizando] = useState(false);
   const [errorIa, setErrorIa] = useState(null);
+  // Vista actual y deals guardados en el telefono.
+  const [vista, setVista] = useState("calc");
+  const [deals, setDeals] = useState(() => getDeals());
+  const [guardado, setGuardado] = useState(false);
   const resultRef = useRef(null);
 
   async function evaluar(datos) {
@@ -46,7 +53,9 @@ export default function App() {
     setAnalisis(null);
     setErrorIa(null);
     try {
-      const data = await evaluateDeal(datos);
+      // El LTV se ingresa como porcentaje (75); el calculo usa fraccion (0.75).
+      const dealCalc = { ...datos, ltv: percentToFraction(datos.ltv) };
+      const data = await evaluateDeal(dealCalc);
       setResult(data);
       setEvaluado(datos);
       setDirty(false);
@@ -81,6 +90,20 @@ export default function App() {
     setDirty(true);
   }
 
+  // Merge de los campos leidos de una foto en el formulario.
+  function autocompletar(fields) {
+    const soloDigitos = (v) => String(v).replace(/\D/g, "");
+    setForm((prev) => {
+      const next = { ...prev };
+      if (fields.name) next.name = fields.name;
+      for (const clave of ["purchase_price", "rehab_budget", "arv"]) {
+        if (fields[clave]) next[clave] = soloDigitos(fields[clave]);
+      }
+      return next;
+    });
+    setDirty(true);
+  }
+
   async function enviar(evento) {
     evento.preventDefault();
     await evaluar(form);
@@ -90,13 +113,62 @@ export default function App() {
     }
   }
 
+  function guardarDeal() {
+    if (!evaluado || !result) return;
+    setDeals(
+      saveDeal({
+        name: evaluado.name,
+        form: evaluado,
+        trapped: result.trapped_cash,
+      }),
+    );
+    setGuardado(true);
+    setTimeout(() => setGuardado(false), 1800);
+  }
+
+  function abrirDeal(d) {
+    setForm(d.form);
+    setVista("calc");
+    evaluar(d.form);
+  }
+
+  function eliminarDeal(id) {
+    setDeals(deleteDeal(id));
+  }
+
   return (
-    <main className="app">
+    <div className="shell">
+      <nav className="tabs">
+        <button
+          type="button"
+          className={"tab" + (vista === "calc" ? " active" : "")}
+          onClick={() => setVista("calc")}
+        >
+          Calculadora
+        </button>
+        <button
+          type="button"
+          className={"tab" + (vista === "guardados" ? " active" : "")}
+          onClick={() => setVista("guardados")}
+        >
+          Guardados{deals.length ? ` (${deals.length})` : ""}
+        </button>
+      </nav>
+
+      {vista === "guardados" ? (
+        <SavedDeals
+          deals={deals}
+          onAbrir={abrirDeal}
+          onEliminar={eliminarDeal}
+        />
+      ) : (
+        <main className="app">
       <div className="left-col">
         <DealForm
           form={form}
           onChange={actualizar}
           onSubmit={enviar}
+          onExtracted={autocompletar}
           cargando={cargando}
           dirty={dirty}
           evaluatedName={evaluado?.name}
@@ -120,10 +192,14 @@ export default function App() {
             <Waterfall result={result} />
             <ResultTable result={result} />
 
+            <button type="button" className="btn-save" onClick={guardarDeal}>
+              {guardado ? "Guardado ✓" : "Guardar deal"}
+            </button>
+
             <div className="result-actions">
               <button
                 type="button"
-                className="btn-pdf"
+                className="btn-pdf ghost"
                 onClick={() =>
                   exportarPDF({ nombre: evaluado?.name, result, analisis })
                 }
@@ -145,13 +221,11 @@ export default function App() {
                 </button>
               )}
             </div>
-
-            <p className="api-note">
-              POST /deals/evaluate · montos como string, sin float
-            </p>
           </>
         )}
-      </aside>
-    </main>
+        </aside>
+        </main>
+      )}
+    </div>
   );
 }

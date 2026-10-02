@@ -76,6 +76,18 @@ class DealExplanation(BaseModel):
     analisis: str
 
 
+class DealExtractRequest(BaseModel):
+    """Imagen (data URL base64) de un aviso para autocompletar el deal."""
+
+    image: str = ""
+
+
+class DealExtractResult(BaseModel):
+    """Campos del deal extraidos de la imagen (solo los que se encontraron)."""
+
+    fields: dict[str, str] = Field(default_factory=dict)
+
+
 class DealOut(BaseModel):
     """Un deal guardado: sus datos de entrada mas el resultado recalculado.
 

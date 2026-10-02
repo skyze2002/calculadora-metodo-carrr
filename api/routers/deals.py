@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from api.ai import credenciales_configuradas, generar_analisis
+from api.ai import credenciales_configuradas, extraer_deal, generar_analisis
 from core.calculator import evaluate_deal
 from core.models import (
     BankRefinance,
@@ -30,6 +30,8 @@ from schemas.deal import (
     DealCreate,
     DealExplainRequest,
     DealExplanation,
+    DealExtractRequest,
+    DealExtractResult,
     DealOut,
     DealResultOut,
 )
@@ -126,6 +128,33 @@ def explain(payload: DealExplainRequest) -> DealExplanation:
             detail="No se pudo generar el analisis. Intenta de nuevo.",
         )
     return DealExplanation(analisis=analisis)
+
+
+@router.post("/extract", response_model=DealExtractResult)
+def extract(payload: DealExtractRequest) -> DealExtractResult:
+    """Autocompleta el deal leyendo una foto de un aviso (vision)."""
+    if not credenciales_configuradas():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="La lectura de fotos con IA no esta configurada (falta OPENAI_API_KEY).",
+        )
+    if not payload.image:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Falta la imagen."
+        )
+    try:
+        fields = extraer_deal(payload.image)
+    except openai.AuthenticationError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="La lectura de fotos con IA no esta configurada (falta la API key).",
+        )
+    except (openai.APIError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="No se pudo leer la foto. Intenta con otra imagen.",
+        )
+    return DealExtractResult(fields=fields)
 
 
 @router.post("", response_model=DealOut, status_code=status.HTTP_201_CREATED)

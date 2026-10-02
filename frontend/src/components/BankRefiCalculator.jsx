@@ -3,31 +3,37 @@
 // y el flujo mensual segun la renta. Calcula en vivo mientras se escribe.
 
 import { useState } from "react";
-import { formatMoney } from "../format.js";
+import {
+  cleanPercent,
+  formatMoney,
+  formatThousands,
+  onlyDigits,
+} from "../format.js";
 
 const INICIAL = {
   property_value: "180000",
-  ltv: "0.75",
-  annual_rate: "0.07",
+  ltv: "75",
+  annual_rate: "7",
   term_years: "30",
   monthly_rent: "1500",
 };
 
 const CAMPOS = [
-  { name: "property_value", label: "Valor tasado de la propiedad", ayuda: "$" },
-  { name: "ltv", label: "LTV máximo del banco", ayuda: "0.75 = 75%" },
-  { name: "annual_rate", label: "Tasa de interés anual", ayuda: "0.07 = 7%" },
-  { name: "term_years", label: "Plazo del préstamo", ayuda: "años" },
-  { name: "monthly_rent", label: "Renta mensual", ayuda: "$" },
+  { name: "property_value", label: "Valor tasado de la propiedad", kind: "money", ayuda: "$" },
+  { name: "ltv", label: "LTV máximo del banco", kind: "percent", ayuda: "%" },
+  { name: "annual_rate", label: "Tasa de interés anual", kind: "percent", ayuda: "% anual" },
+  { name: "term_years", label: "Plazo del préstamo", kind: "int", ayuda: "años" },
+  { name: "monthly_rent", label: "Renta mensual", kind: "money", ayuda: "$" },
 ];
 
 const num = (v) => Number(v || 0);
 const money = (n) => (Math.round((n + Number.EPSILON) * 100) / 100).toFixed(2);
 
 // Amortizacion hipotecaria estandar + flujo mensual con la renta.
+// El LTV y la tasa se ingresan como porcentaje; aca se pasan a fraccion.
 function calcular(form) {
-  const loanAmount = num(form.property_value) * num(form.ltv);
-  const r = num(form.annual_rate) / 12; // tasa mensual
+  const loanAmount = num(form.property_value) * (num(form.ltv) / 100);
+  const r = num(form.annual_rate) / 100 / 12; // tasa mensual
   const n = num(form.term_years) * 12; // cantidad de cuotas
 
   let monthly = 0;
@@ -59,6 +65,21 @@ export default function BankRefiCalculator() {
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
+  // Valor a mostrar y limpieza segun el tipo de campo.
+  function mostrar(campo) {
+    if (campo.kind === "money") return formatThousands(form[campo.name]);
+    return form[campo.name];
+  }
+  function cambiar(campo, value) {
+    if (campo.kind === "money" || campo.kind === "int") {
+      actualizar(campo.name, onlyDigits(value));
+    } else if (campo.kind === "percent") {
+      actualizar(campo.name, cleanPercent(value));
+    } else {
+      actualizar(campo.name, value);
+    }
+  }
+
   return (
     <section className="bank-calc">
       <div className="bank-head">
@@ -78,8 +99,8 @@ export default function BankRefiCalculator() {
             <span className="field-label">{campo.label}</span>
             <input
               inputMode="decimal"
-              value={form[campo.name]}
-              onChange={(e) => actualizar(campo.name, e.target.value)}
+              value={mostrar(campo)}
+              onChange={(e) => cambiar(campo, e.target.value)}
             />
             <span className="field-help">{campo.ayuda}</span>
           </label>

@@ -1,39 +1,50 @@
 // Panel izquierdo: formulario del deal. No hace aritmetica; solo recolecta.
-// Los porcentajes se ingresan como fraccion (0.90 = 90%).
+// Los montos se muestran con separador de miles; los porcentajes como 75, 7.
 
-// Campos agrupados en tres secciones del dominio.
+import { cleanPercent, formatThousands, onlyDigits } from "../format.js";
+import PhotoImport from "./PhotoImport.jsx";
+
+// Campos agrupados en tres secciones del dominio. kind: money | percent.
 const SECCIONES = [
   {
     titulo: "Propiedad",
     campos: [
-      { name: "purchase_price", label: "Precio de compra", ayuda: "$" },
-      { name: "rehab_budget", label: "Presupuesto de rehab", ayuda: "$" },
-      { name: "arv", label: "ARV", ayuda: "$" },
+      { name: "purchase_price", label: "Precio de compra", kind: "money", ayuda: "$" },
+      { name: "rehab_budget", label: "Presupuesto de rehab", kind: "money", ayuda: "$" },
+      { name: "arv", label: "ARV", kind: "money", ayuda: "$" },
     ],
   },
   {
     titulo: "Prestamista privado",
     campos: [
-      { name: "loan_total", label: "Total del préstamo", ayuda: "$" },
-      { name: "closing_fee", label: "Costes de cierre", ayuda: "$" },
+      { name: "loan_total", label: "Total del préstamo", kind: "money", ayuda: "$" },
+      { name: "closing_fee", label: "Costes de cierre", kind: "money", ayuda: "$" },
     ],
   },
   {
     titulo: "Refi con el banco",
-    campos: [
-      { name: "ltv", label: "LTV", ayuda: "0.75 = 75%" },
-    ],
+    campos: [{ name: "ltv", label: "LTV", kind: "percent", ayuda: "%" }],
   },
 ];
 
 function Campo({ campo, valor, onChange }) {
+  let display = valor;
+  let handle = (v) => onChange(campo.name, v);
+
+  if (campo.kind === "money") {
+    display = formatThousands(valor);
+    handle = (v) => onChange(campo.name, onlyDigits(v));
+  } else if (campo.kind === "percent") {
+    handle = (v) => onChange(campo.name, cleanPercent(v));
+  }
+
   return (
     <label className="field">
       <span className="field-label">{campo.label}</span>
       <input
         inputMode="decimal"
-        value={valor}
-        onChange={(e) => onChange(campo.name, e.target.value)}
+        value={display}
+        onChange={(e) => handle(e.target.value)}
       />
       <span className="field-help">{campo.ayuda}</span>
     </label>
@@ -44,6 +55,7 @@ export default function DealForm({
   form,
   onChange,
   onSubmit,
+  onExtracted,
   cargando,
   dirty,
   evaluatedName,
@@ -57,9 +69,10 @@ export default function DealForm({
         </span>
         <h1 className="form-title">El deal</h1>
         <p className="form-intro">
-          Los porcentajes van como fracción (0.90 = 90%). Cargá los datos y tocá
-          Evaluar para ver cuánto capital queda atrapado.
+          Cargá los datos del deal y tocá Evaluar para ver cuánto capital queda
+          atrapado. O sacale una foto a un aviso y los completo con IA.
         </p>
+        <PhotoImport onExtracted={onExtracted} />
       </header>
 
       <label className="field field-name">

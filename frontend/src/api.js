@@ -38,3 +38,30 @@ export async function explainDeal(name, result) {
   const data = await response.json();
   return data.analisis;
 }
+
+// Autocompleta el deal desde una foto. Manda la imagen (data URL base64) al
+// backend, que la lee con IA y devuelve los campos encontrados. Necesita backend.
+export async function extractDeal(imageDataUrl) {
+  let response;
+  try {
+    response = await fetch(`${API_BASE}/deals/extract`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: imageDataUrl }),
+    });
+  } catch {
+    throw new Error("Necesita conexión al servidor para leer la foto.");
+  }
+  if (!response.ok) {
+    let detalle = `No se pudo leer la foto (${response.status}).`;
+    try {
+      const data = await response.json();
+      if (data && data.detail) detalle = data.detail;
+    } catch {
+      // sin cuerpo JSON
+    }
+    throw new Error(detalle);
+  }
+  const data = await response.json();
+  return data.fields || {};
+}

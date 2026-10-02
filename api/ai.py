@@ -7,6 +7,7 @@ inventa montos. Asi el endpoint no depende del calculo del backend.
 
 from __future__ import annotations
 
+import json
 import os
 from decimal import Decimal, InvalidOperation
 
@@ -136,3 +137,58 @@ def generar_analisis(nombre: str, result: dict[str, str]) -> str:
         ],
     )
     return (response.choices[0].message.content or "").strip()
+
+
+# --- Autocompletar el deal desde una foto (vision) ---
+
+EXTRACT_SYSTEM = (
+    "Sos un asistente que lee la foto de un aviso o publicacion inmobiliaria (o "
+    "una captura) y extrae los datos de la propiedad. Devolve UNICAMENTE un JSON "
+    "con estas claves, todas OPCIONALES (incluila solo si el dato aparece "
+    "explicito en la imagen): "
+    "name (direccion o titulo del aviso), purchase_price (precio de venta), "
+    "arv (valor despues de reparado, si figura), rehab_budget (costo de "
+    "reparacion, si figura). "
+    "Los montos van como numero entero, sin simbolo ni separadores (ej: 150000). "
+    "NO inventes ni estimes valores: si un dato no esta en la imagen, omiti esa "
+    "clave. Responde solo el JSON, sin texto extra."
+)
+
+# Solo estas claves se aceptan de la extraccion (datos de un aviso).
+_EXTRAIBLES = {"name", "purchase_price", "arv", "rehab_budget"}
+
+
+def extraer_deal(image_data_url: str) -> dict[str, str]:
+    """Lee una imagen (data URL base64) y devuelve los campos del deal que
+
+    encuentre. Solo extrae lo explicito; limpia los montos a digitos.
+    """
+    client = openai.OpenAI()
+    response = client.chat.completions.create(
+        model=MODEL,
+        max_tokens=300,
+        response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": EXTRACT_SYSTEM},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "Extrae los datos de esta propiedad."},
+                    {"type": "image_url", "image_url": {"url": image_data_url}},
+                ],
+            },
+        ],
+    )
+    data = json.loads(response.choices[0].message.content or "{}")
+
+    out: dict[str, str] = {}
+    for clave, valor in data.items():
+        if clave not in _EXTRAIBLES or valor in (None, ""):
+            continue
+        if clave == "name":
+            out[clave] = str(valor).strip()[:120]
+        else:
+            digitos = "".join(ch for ch in str(valor) if ch.isdigit())
+            if digitos:
+                out[clave] = digitos
+    return out

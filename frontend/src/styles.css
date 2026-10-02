@@ -135,6 +135,41 @@ input {
   counter-reset: sec;
 }
 
+/* ---- Autocompletar desde foto ---- */
+.photo-import {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.btn-photo {
+  background: var(--color-accent-tint);
+  border: 1.5px solid var(--color-accent-soft);
+  color: var(--color-accent-dark);
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-photo:hover {
+  border-color: var(--color-accent);
+}
+
+.btn-photo:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.photo-error {
+  font-size: 13px;
+  color: var(--color-malo);
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -651,6 +686,158 @@ input:focus {
   color: var(--color-help);
 }
 
+.btn-save {
+  width: 100%;
+  background: var(--color-accent);
+  border: none;
+  color: #ffffff;
+  border-radius: 999px;
+  padding: 13px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 20px -8px rgba(255, 107, 26, 0.6);
+}
+
+.btn-save:hover {
+  background: var(--color-accent-hover);
+}
+
+/* ---- Pestanas ---- */
+.tabs {
+  display: flex;
+  gap: 18px;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 20px 40px 0;
+}
+
+.tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 8px 2px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.tab.active {
+  color: var(--color-accent-dark);
+  border-bottom-color: var(--color-accent);
+}
+
+/* ---- Apartado de deals guardados ---- */
+.saved-view {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 40px 40px;
+}
+
+.saved-title {
+  margin: 0 0 16px;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.saved-empty {
+  color: var(--color-muted);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.saved-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.saved-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: 14px 18px;
+  box-shadow: var(--shadow-card);
+}
+
+.saved-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.saved-name {
+  font-weight: 600;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saved-date {
+  font-size: 12px;
+  color: var(--color-muted-2);
+}
+
+.saved-trapped {
+  flex: none;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.saved-trapped.bueno {
+  color: var(--color-bueno);
+}
+
+.saved-trapped.malo {
+  color: var(--color-malo);
+}
+
+.saved-actions {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+
+.btn-mini {
+  background: var(--color-accent);
+  border: none;
+  color: #ffffff;
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-mini:hover {
+  background: var(--color-accent-hover);
+}
+
+.btn-mini.ghost {
+  background: #ffffff;
+  border: 1.5px solid var(--color-border);
+  color: var(--color-label);
+}
+
+.btn-mini.ghost:hover {
+  border-color: var(--color-malo);
+  color: var(--color-malo);
+}
+
 /* ---- Calculadora de refi bancario (apartado independiente) ---- */
 .bank-calc {
   display: flex;
@@ -800,6 +987,22 @@ input:focus {
   }
   .form-title {
     font-size: 32px;
+  }
+
+  .tabs {
+    padding: 16px 16px 0;
+  }
+  .saved-view {
+    padding: 20px 16px 32px;
+  }
+  .saved-item {
+    flex-wrap: wrap;
+  }
+  .saved-actions {
+    width: 100%;
+  }
+  .saved-actions .btn-mini {
+    flex: 1;
   }
 
   /* Targets tactiles comodos */
