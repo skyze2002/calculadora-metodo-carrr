@@ -170,6 +170,33 @@ input {
   color: var(--color-malo);
 }
 
+.url-import {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.url-row {
+  display: flex;
+  gap: 10px;
+}
+
+.url-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.url-row .btn-photo {
+  flex: none;
+}
+
+@media (max-width: 480px) {
+  .url-row {
+    flex-direction: column;
+  }
+}
+
 .field {
   display: flex;
   flex-direction: column;

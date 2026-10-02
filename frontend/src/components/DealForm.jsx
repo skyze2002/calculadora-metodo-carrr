@@ -3,6 +3,7 @@
 
 import { cleanPercent, formatThousands, onlyDigits } from "../format.js";
 import PhotoImport from "./PhotoImport.jsx";
+import UrlImport from "./UrlImport.jsx";
 
 // Campos agrupados en tres secciones del dominio. kind: money | percent.
 const SECCIONES = [
@@ -70,8 +71,9 @@ export default function DealForm({
         <h1 className="form-title">El deal</h1>
         <p className="form-intro">
           Cargá los datos del deal y tocá Evaluar para ver cuánto capital queda
-          atrapado. O sacale una foto a un aviso y los completo con IA.
+          atrapado. O autocompletalos con IA desde una foto o el link de un aviso.
         </p>
+        <UrlImport onExtracted={onExtracted} />
         <PhotoImport onExtracted={onExtracted} />
       </header>
 

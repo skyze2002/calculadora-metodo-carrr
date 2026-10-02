@@ -65,3 +65,30 @@ export async function extractDeal(imageDataUrl) {
   const data = await response.json();
   return data.fields || {};
 }
+
+// Autocompleta el deal desde el link de un aviso. El backend descarga la pagina
+// y la lee con IA. Necesita backend.
+export async function extractDealUrl(url) {
+  let response;
+  try {
+    response = await fetch(`${API_BASE}/deals/extract-url`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    });
+  } catch {
+    throw new Error("Necesita conexión al servidor para leer el link.");
+  }
+  if (!response.ok) {
+    let detalle = `No se pudo leer el link (${response.status}).`;
+    try {
+      const data = await response.json();
+      if (data && data.detail) detalle = data.detail;
+    } catch {
+      // sin cuerpo JSON
+    }
+    throw new Error(detalle);
+  }
+  const data = await response.json();
+  return data.fields || {};
+}

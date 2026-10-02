@@ -11,12 +11,18 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+import httpx
 import openai
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from api.ai import credenciales_configuradas, extraer_deal, generar_analisis
+from api.ai import (
+    credenciales_configuradas,
+    extraer_deal,
+    extraer_deal_url,
+    generar_analisis,
+)
 from core.calculator import evaluate_deal
 from core.models import (
     BankRefinance,
@@ -32,6 +38,7 @@ from schemas.deal import (
     DealExplanation,
     DealExtractRequest,
     DealExtractResult,
+    DealExtractUrlRequest,
     DealOut,
     DealResultOut,
 )
@@ -153,6 +160,40 @@ def extract(payload: DealExtractRequest) -> DealExtractResult:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="No se pudo leer la foto. Intenta con otra imagen.",
+        )
+    return DealExtractResult(fields=fields)
+
+
+@router.post("/extract-url", response_model=DealExtractResult)
+def extract_url(payload: DealExtractUrlRequest) -> DealExtractResult:
+    """Autocompleta el deal leyendo el link de un aviso."""
+    if not credenciales_configuradas():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="La lectura con IA no esta configurada (falta OPENAI_API_KEY).",
+        )
+    url = payload.url.strip()
+    if not url.startswith(("http://", "https://")):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Pegá un link válido (que empiece con http).",
+        )
+    try:
+        fields = extraer_deal_url(url)
+    except openai.AuthenticationError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="La lectura con IA no esta configurada (falta la API key).",
+        )
+    except httpx.HTTPError:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="No se pudo abrir ese link. Probá con la foto del aviso.",
+        )
+    except (openai.APIError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="No se pudo leer el aviso. Probá con otra página o la foto.",
         )
     return DealExtractResult(fields=fields)
 

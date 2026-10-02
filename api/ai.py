@@ -7,10 +7,13 @@ inventa montos. Asi el endpoint no depende del calculo del backend.
 
 from __future__ import annotations
 
+import html
 import json
 import os
+import re
 from decimal import Decimal, InvalidOperation
 
+import httpx
 import openai
 
 # Modelo de OpenAI. gpt-4o-mini es barato y alcanza para explicar un resultado.
@@ -180,7 +183,11 @@ def extraer_deal(image_data_url: str) -> dict[str, str]:
         ],
     )
     data = json.loads(response.choices[0].message.content or "{}")
+    return _campos_extraidos(data)
 
+
+def _campos_extraidos(data: dict) -> dict[str, str]:
+    """Deja solo las claves extraibles; los montos a digitos, el nombre limpio."""
     out: dict[str, str] = {}
     for clave, valor in data.items():
         if clave not in _EXTRAIBLES or valor in (None, ""):
@@ -192,3 +199,85 @@ def extraer_deal(image_data_url: str) -> dict[str, str]:
             if digitos:
                 out[clave] = digitos
     return out
+
+
+# --- Autocompletar el deal desde el link de un aviso ---
+
+EXTRACT_SYSTEM_TEXT = (
+    "Sos un asistente que lee el texto de una pagina de un aviso o publicacion "
+    "inmobiliaria y extrae los datos de la propiedad. Devolve UNICAMENTE un JSON "
+    "con estas claves, todas OPCIONALES (incluila solo si el dato aparece): "
+    "name (direccion o titulo del aviso), purchase_price (precio de venta), "
+    "arv (valor despues de reparado, si figura), rehab_budget (costo de "
+    "reparacion, si figura). "
+    "Los montos van como numero entero, sin simbolo ni separadores (ej: 150000). "
+    "NO inventes ni estimes valores: si un dato no esta, omiti esa clave. "
+    "Responde solo el JSON."
+)
+
+_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+)
+
+
+def _limpiar_texto(s: str) -> str:
+    return html.unescape(re.sub(r"\s+", " ", s)).strip()
+
+
+def _condensar_pagina(html_text: str) -> str:
+    """Arma un texto corto con lo util: titulo, meta tags, JSON-LD y texto."""
+    partes: list[str] = []
+
+    m = re.search(r"<title[^>]*>(.*?)</title>", html_text, re.I | re.S)
+    if m:
+        partes.append("Titulo: " + _limpiar_texto(m.group(1)))
+
+    for mm in re.finditer(r"<meta[^>]+>", html_text, re.I):
+        tag = mm.group(0)
+        nombre = re.search(r'(?:name|property)\s*=\s*["\']([^"\']+)["\']', tag, re.I)
+        contenido = re.search(r'content\s*=\s*["\']([^"\']*)["\']', tag, re.I)
+        if nombre and contenido:
+            clave = nombre.group(1).lower()
+            if any(k in clave for k in ("title", "description", "price", "og:", "product")):
+                partes.append(f"{nombre.group(1)}: {_limpiar_texto(contenido.group(1))}")
+
+    for jm in re.finditer(
+        r"<script[^>]+application/ld\+json[^>]*>(.*?)</script>", html_text, re.I | re.S
+    ):
+        partes.append("JSON-LD: " + jm.group(1).strip()[:2000])
+
+    cuerpo = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", html_text, flags=re.I | re.S)
+    cuerpo = re.sub(r"<[^>]+>", " ", cuerpo)
+    partes.append("Texto: " + _limpiar_texto(cuerpo)[:4000])
+
+    return "\n".join(partes)[:12000]
+
+
+def extraer_deal_url(url: str) -> dict[str, str]:
+    """Descarga la pagina del aviso y extrae los campos del deal.
+
+    Puede lanzar httpx.HTTPError si no se puede descargar; openai.* si falla la
+    IA. El endpoint las traduce a respuestas amables.
+    """
+    with httpx.Client(
+        follow_redirects=True,
+        timeout=15.0,
+        headers={"User-Agent": _UA, "Accept-Language": "es,en;q=0.8"},
+    ) as cliente:
+        resp = cliente.get(url)
+        resp.raise_for_status()
+        contenido = _condensar_pagina(resp.text)
+
+    client = openai.OpenAI()
+    response = client.chat.completions.create(
+        model=MODEL,
+        max_tokens=300,
+        response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": EXTRACT_SYSTEM_TEXT},
+            {"role": "user", "content": "Texto de la pagina del aviso:\n\n" + contenido},
+        ],
+    )
+    data = json.loads(response.choices[0].message.content or "{}")
+    return _campos_extraidos(data)

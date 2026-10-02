@@ -82,8 +82,14 @@ class DealExtractRequest(BaseModel):
     image: str = ""
 
 
+class DealExtractUrlRequest(BaseModel):
+    """Link de un aviso para autocompletar el deal."""
+
+    url: str = ""
+
+
 class DealExtractResult(BaseModel):
-    """Campos del deal extraidos de la imagen (solo los que se encontraron)."""
+    """Campos del deal extraidos (solo los que se encontraron)."""
 
     fields: dict[str, str] = Field(default_factory=dict)
 
