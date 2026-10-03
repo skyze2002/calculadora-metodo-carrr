@@ -23,6 +23,11 @@ services:
       # en el panel de Render (Environment). Cierra la API a extranos.
       - key: APP_KEY
         sync: false
+      # Servicio de scraping para leer portales que bloquean las IPs de Render
+      # (Zillow, Realtor, Redfin). Opcional: sin esta key, "Traer link" solo
+      # funciona en sitios que no bloquean. Se consigue en scraperapi.com.
+      - key: SCRAPER_API_KEY
+        sync: false
       # Origenes permitidos (lista separada por comas). Incluye los de la APK
       # (WebView) y, si usas la web, agregale tu dominio de Vercel.
       - key: CORS_ORIGINS

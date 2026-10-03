@@ -227,6 +227,11 @@ _UA = (
 MAX_PAGE_BYTES = 2_000_000
 MAX_REDIRECTS = 3
 
+# Servicio de scraping (IPs residenciales + anti-bot) para portales que bloquean
+# las IPs de datacenter como Zillow / Realtor / Redfin. Opcional: si no hay
+# SCRAPER_API_KEY en el entorno, solo se usa el fetch directo.
+SCRAPER_ENDPOINT = "https://api.scraperapi.com/"
+
 
 def _es_host_publico(host: str) -> bool:
     """True solo si TODAS las IPs del host son publicas (anti-SSRF).
@@ -258,12 +263,59 @@ def _es_host_publico(host: str) -> bool:
 
 
 def _descargar_seguro(url: str) -> str:
+    """Descarga la pagina del aviso con tope de tamano y proteccion anti-SSRF.
+
+    Primero intenta el fetch directo (gratis). Si el sitio responde con un error
+    HTTP (p. ej. Zillow devuelve 403 a las IPs de datacenter) y hay un servicio
+    de scraping configurado (SCRAPER_API_KEY), reintenta a traves de el con una
+    IP residencial. Un ValueError (destino interno / URL invalida) NO se
+    reintenta: es un bloqueo de seguridad, no una falla del sitio.
+    """
+    try:
+        return _descargar_directo(url)
+    except httpx.HTTPError:
+        clave = os.environ.get("SCRAPER_API_KEY")
+        if not clave:
+            raise
+        return _descargar_via_scraper(url, clave)
+
+
+def _descargar_via_scraper(url: str, clave: str) -> str:
+    """Trae la pagina a traves del servicio de scraping (IP residencial).
+
+    El servicio hace el pedido desde su red, no desde la nuestra, asi que no
+    puede alcanzar servicios internos; aun asi validamos que el host sea publico
+    antes de gastar un credito. Lanza httpx.HTTPError si el servicio falla.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise ValueError("URL no permitida.")
+    if not _es_host_publico(parsed.hostname):
+        raise ValueError("El link apunta a un destino interno no permitido.")
+
+    # render=true ejecuta el JS de la pagina; ultra_premium usa IPs residenciales
+    # para los sitios mas duros (Zillow). Gasta mas creditos, pero es lo que
+    # hace que esos portales respondan.
+    params = {
+        "api_key": clave,
+        "url": url,
+        "render": "true",
+        "ultra_premium": "true",
+        "country_code": "us",
+    }
+    with httpx.Client(timeout=75.0) as cliente:
+        resp = cliente.get(SCRAPER_ENDPOINT, params=params)
+        resp.raise_for_status()
+        return _condensar_pagina(resp.text[:MAX_PAGE_BYTES])
+
+
+def _descargar_directo(url: str) -> str:
     """Descarga la pagina validando cada salto contra SSRF y con tope de tamano.
 
     No deja que httpx siga redirecciones solo: las sigue a mano (hasta
     MAX_REDIRECTS) validando el host de cada destino. Corta la lectura al llegar
     a MAX_PAGE_BYTES. Lanza ValueError si la URL apunta a un destino no
-    permitido; httpx.HTTPError ante fallos de red.
+    permitido; httpx.HTTPError ante fallos de red o respuestas 4xx/5xx.
     """
     actual = url
     with httpx.Client(
