@@ -10,6 +10,8 @@ venv/
 
 # Entorno
 .env
+.env.local
+.env.*.local
 
 # Node / frontend
 node_modules/
