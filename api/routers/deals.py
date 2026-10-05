@@ -213,26 +213,15 @@ def extract_url(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="La lectura con IA no esta configurada (falta la API key).",
         )
-    except httpx.HTTPError as e:
-        extra = ""
-        if isinstance(e, httpx.HTTPStatusError):
-            try:
-                extra = (
-                    f" [DEBUG upstream {e.response.status_code} "
-                    f"{e.response.request.url.host}: {e.response.text[:200]}]"
-                )
-            except Exception:
-                extra = f" [DEBUG {type(e).__name__}]"
-        else:
-            extra = f" [DEBUG {type(e).__name__}: {str(e)[:150]}]"
+    except httpx.HTTPError:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="No se pudo abrir ese link. Probá con la foto del aviso." + extra,
+            detail="No se pudo abrir ese link. Probá con la foto del aviso.",
         )
-    except (openai.APIError, ValueError) as e:
+    except (openai.APIError, ValueError):
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"No se pudo leer el aviso. [DEBUG {type(e).__name__}: {str(e)[:150]}]",
+            detail="No se pudo leer el aviso. Probá con otra página o la foto.",
         )
     return DealExtractResult(fields=fields)
 

@@ -396,7 +396,7 @@ def _condensar_pagina(html_text: str) -> str:
 # Zillapi (zillapi.com) devuelve el inmueble ya estructurado a partir de la URL.
 # Si hay ZILLAPI_KEY y el link es de Zillow, se usa esta via; si no, la generica.
 
-ZILLAPI_URL = "https://zillapi.com/v1/properties/by-url"
+ZILLAPI_URL = "https://api.zillapi.com/v1/properties/by-url"
 
 
 def _es_zillow(url: str) -> bool:
