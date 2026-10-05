@@ -185,9 +185,18 @@ def search_products(payload: ProductSearchRequest) -> ProductSearchResult:
             "presupuesto o cambiar el detalle."
         )
         # DEBUG temporal: entender por qué vino vacío (revertir luego).
-        dbg = f" [DEBUG top={list(data.keys())[:12]} error={str(data.get('error'))[:120]} n_raw={len(crudos)}"
+        dbg = f" [DEBUG n_raw={len(crudos)} error={str(data.get('error'))[:80]}"
         if crudos and isinstance(crudos[0], dict):
-            dbg += f" item0={list(crudos[0].keys())[:16]}"
+            i0 = crudos[0]
+            enlace = i0.get("product_link") or i0.get("link") or ""
+            dbg += (
+                f" plink={str(enlace)[:90]!r}"
+                f" pub={public_url(enlace)!r}"
+                f" src={str(i0.get('source'))[:30]!r}"
+                f" title_ok={bool(str(i0.get('title') or '').strip())}"
+                f" xp={i0.get('extracted_price')!r}"
+                f" thumb={str(i0.get('thumbnail'))[:50]!r}"
+            )
         mensaje += dbg + "]"
 
     return ProductSearchResult(
