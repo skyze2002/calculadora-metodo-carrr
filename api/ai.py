@@ -390,12 +390,80 @@ def _condensar_pagina(html_text: str) -> str:
     return "\n".join(partes)[:12000]
 
 
+# --- Zillow: via Zillapi (datos estructurados por URL, sin scraping ni IA) ---
+#
+# Zillow bloquea las IPs de servidor, asi que el scraping directo no sirve.
+# Zillapi (zillapi.com) devuelve el inmueble ya estructurado a partir de la URL.
+# Si hay ZILLAPI_KEY y el link es de Zillow, se usa esta via; si no, la generica.
+
+ZILLAPI_URL = "https://zillapi.com/v1/properties/by-url"
+
+
+def _es_zillow(url: str) -> bool:
+    """True si la URL es de zillow.com (o un subdominio)."""
+    try:
+        host = (urlparse(url).hostname or "").lower()
+    except ValueError:
+        return False
+    return host == "zillow.com" or host.endswith(".zillow.com")
+
+
+def _direccion_zillapi(address) -> str:
+    """Arma el nombre del deal desde el objeto address de Zillapi."""
+    if isinstance(address, str):
+        return address.strip()
+    if isinstance(address, dict):
+        partes = [address.get(k) for k in ("streetAddress", "city", "state")]
+        partes = [str(p).strip() for p in partes if p]
+        if partes:
+            return ", ".join(partes)
+    return ""
+
+
+def extraer_deal_zillapi(url: str) -> dict[str, str]:
+    """Trae el inmueble de Zillow via Zillapi y lo mapea a los campos del deal.
+
+    price -> precio de compra, zestimate -> ARV (estimado, editable), address ->
+    nombre. El rehab no viene (lo completa el usuario). Lanza httpx.HTTPError si
+    Zillapi falla (key invalida, sin creditos, URL no resuelta).
+    """
+    clave = os.environ.get("ZILLAPI_KEY")
+    if not clave:
+        raise ValueError("Zillapi no configurado.")
+    with httpx.Client(timeout=30.0) as cliente:
+        resp = cliente.get(
+            ZILLAPI_URL,
+            params={"url": url},
+            headers={"Authorization": f"Bearer {clave}"},
+        )
+        resp.raise_for_status()
+        data = (resp.json() or {}).get("data") or {}
+
+    crudo: dict = {}
+    nombre = _direccion_zillapi(data.get("address"))
+    if nombre:
+        crudo["name"] = nombre
+    precio = data.get("price")
+    if isinstance(precio, (int, float)) and precio > 0:
+        crudo["purchase_price"] = int(precio)
+    zestimate = data.get("zestimate")
+    if isinstance(zestimate, (int, float)) and zestimate > 0:
+        crudo["arv"] = int(zestimate)
+    return _campos_extraidos(crudo)
+
+
 def extraer_deal_url(url: str) -> dict[str, str]:
     """Descarga la pagina del aviso y extrae los campos del deal.
+
+    Si el link es de Zillow y hay ZILLAPI_KEY, usa Zillapi (datos estructurados).
+    Si no, baja la pagina (fetch directo o scraper) y la lee con IA.
 
     Puede lanzar httpx.HTTPError si no se puede descargar; openai.* si falla la
     IA. El endpoint las traduce a respuestas amables.
     """
+    if _es_zillow(url) and os.environ.get("ZILLAPI_KEY"):
+        return extraer_deal_zillapi(url)
+
     contenido = _descargar_seguro(url)
 
     client = openai.OpenAI()

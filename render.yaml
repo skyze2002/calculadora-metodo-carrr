@@ -32,6 +32,10 @@ services:
       # "ultra" (o "premium"), que requiere un plan PAGO de ScraperAPI.
       - key: SCRAPER_PREMIUM
         sync: false
+      # Zillapi: lee Zillow por URL (datos estructurados). 100 consultas gratis.
+      # La pegas vos en el panel de Render. Key con prefijo "zk_".
+      - key: ZILLAPI_KEY
+        sync: false
       # Origenes permitidos (lista separada por comas). Incluye los de la APK
       # (WebView) y, si usas la web, agregale tu dominio de Vercel.
       - key: CORS_ORIGINS
