@@ -1,4 +1,4 @@
-"""Entradas y resultados de la búsqueda de básicos para rehab."""
+"""Entradas y resultados de la búsqueda de básicos para rehab (Google Shopping)."""
 
 from __future__ import annotations
 
@@ -26,6 +26,15 @@ CATEGORIES = {
     "bathroom": "Accesorios de baño",
     "other": "Otros básicos para rehab",
 }
+# Término de búsqueda en inglés (mejores resultados en Google Shopping US).
+CATEGORY_QUERY_EN = {
+    "mirrors": "mirror",
+    "lighting": "light fixture",
+    "faucets": "faucet",
+    "handles": "cabinet handles",
+    "bathroom": "bathroom accessories",
+    "other": "home improvement basics",
+}
 
 
 class ProductSearchRequest(BaseModel):
@@ -46,36 +55,26 @@ class ProductSearchRequest(BaseModel):
         return value
 
 
-class ProductCandidate(BaseModel):
-    """La IA debe devolver todos los campos; precio desconocido es null."""
+class ProductItem(BaseModel):
+    """Un producto de Google Shopping: foto, precio y tienda."""
 
-    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
-
-    title: str = Field(min_length=1, max_length=180)
-    store: str = Field(min_length=1, max_length=100)
-    url: str = Field(min_length=1, max_length=2048)
-    price: str | None = Field(pattern=r"^\d{1,9}(?:\.\d{1,2})?$")
-    currency: str = Field(min_length=3, max_length=3)
-    price_note: str = Field(max_length=300)
-    shipping_note: str = Field(max_length=300)
-    reason: str = Field(max_length=400)
-
-
-class ProductResearch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    products: list[ProductCandidate] = Field(max_length=6)
-
-
-class ProductSource(BaseModel):
-    title: str
-    url: str
+    title: str = Field(min_length=1, max_length=200)
+    store: str = Field(min_length=1, max_length=100)
+    url: str = Field(min_length=1, max_length=2048)
+    image: str | None = Field(default=None, max_length=2048)
+    # Precio como string decimal "xx.xx", o null si la tienda no lo publica.
+    price: str | None = Field(default=None, pattern=r"^\d{1,9}\.\d{2}$")
+    currency: str = Field(min_length=3, max_length=3)
+    rating: float | None = Field(default=None, ge=0, le=5)
+    delivery: str = Field(default="", max_length=160)
 
 
 class ProductSearchResult(BaseModel):
-    products: list[ProductCandidate]
-    sources: list[ProductSource]
+    products: list[ProductItem]
     searched_at: str
     country: Country
     currency: str
+    query: str
     message: str

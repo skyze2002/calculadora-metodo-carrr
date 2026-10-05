@@ -116,14 +116,22 @@ export default function RehabProducts({ hidden }) {
             <p className="products-search-context">Búsqueda: {searched.details || resultCategory.hint}{searched.city ? ` · ${searched.city}` : ""}{searched.region ? ` · ${searched.region}` : ""}{searched.budget ? ` · Tope ${result.currency} ${searched.budget}` : " · Sin tope de precio"}</p>
             {result.products.length === 0 ? <div className="products-card products-empty"><ProductIcon category={searched.category} size={40} />
               <h3>No hay coincidencias respaldadas</h3><p>Probá otra medida o un presupuesto más amplio.</p></div> :
-              <div className="products-result-grid">{result.products.map((product, index) => <article className="products-card products-item" key={product.url}>
-                <div className="products-item-top"><span className="products-item-number">{String(index + 1).padStart(2, "0")}</span>
-                  <span className="products-store">{product.store}</span></div>
-                <h3>{product.title}</h3><strong className="products-price">{productPrice(product)}</strong>
-                <p className="products-price-note">{product.price_note || "Formato de venta no confirmado"}</p>
-                {product.reason && <p>{product.reason}</p>}
-                <p className="products-shipping">{product.shipping_note || "Envío no confirmado"}</p>
-                <a className="products-store-link" href={product.url} target="_blank" rel="noopener noreferrer">Ver producto en la tienda <span aria-hidden="true">↗</span></a>
+              <div className="products-result-grid">{result.products.map((product) => <article className="products-card products-item" key={product.url}>
+                <div className="products-thumb">
+                  {product.image
+                    ? <img src={product.image} alt="" loading="lazy" referrerPolicy="no-referrer" />
+                    : <ProductIcon category={searched.category} size={40} />}
+                </div>
+                <div className="products-item-body">
+                  <span className="products-store">{product.store}</span>
+                  <h3>{product.title}</h3>
+                  <strong className="products-price">{productPrice(product)}</strong>
+                  <div className="products-item-meta">
+                    {product.rating != null && <span className="products-rating">★ {product.rating.toFixed(1)}</span>}
+                    {product.delivery && <span className="products-delivery">{product.delivery}</span>}
+                  </div>
+                  <a className="products-store-link" href={product.url} target="_blank" rel="noopener noreferrer">Ver en la tienda <span aria-hidden="true">↗</span></a>
+                </div>
               </article>)}</div>}
             <p className="products-disclaimer">Consultado el {new Date(result.searched_at).toLocaleString("es")}. Precios, stock y envío pueden cambiar. Revisá medidas, formato de venta, compatibilidad y total en la tienda antes de comprar.</p>
           </> : <div className="products-card products-empty">

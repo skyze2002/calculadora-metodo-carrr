@@ -36,6 +36,10 @@ services:
       # La pegas vos en el panel de Render. Key con prefijo "zk_".
       - key: ZILLAPI_KEY
         sync: false
+      # SerpAPI (serpapi.com): buscador de productos vía Google Shopping (foto +
+      # precio + tienda). 100 búsquedas gratis/mes. La pegas vos en Render.
+      - key: SERPAPI_KEY
+        sync: false
       # Origenes permitidos (lista separada por comas). Incluye los de la APK
       # (WebView) y, si usas la web, agregale tu dominio de Vercel.
       - key: CORS_ORIGINS

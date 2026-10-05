@@ -4,10 +4,11 @@ import { INITIAL_PRODUCT_SEARCH, PRODUCT_CATEGORIES, PRODUCT_MARKETS, productPri
   validateProductResults, validateProductSearch } from "../src/rehabProducts.js";
 
 const form = { category: "mirrors", country: "US", city: " Miami ", region: " Florida ", budget: "25,50", details: " Redondo " };
-const product = { title: "Espejo de ejemplo", store: "Tienda de ejemplo", price: "25.50", currency: "USD",
-  url: "https://tienda.example/espejo", price_note: "Por unidad", shipping_note: "No confirmado", reason: "Medida pedida" };
-const result = { products: [product], sources: [{ title: "Fuente", url: product.url }], country: "US",
-  currency: "USD", searched_at: "2026-10-03T12:00:00+00:00", message: "Opciones encontradas" };
+const product = { title: "Espejo de ejemplo", store: "Amazon.com", price: "25.50", currency: "USD",
+  url: "https://www.amazon.com/dp/x", image: "https://encrypted-tbn0.gstatic.com/i.jpg",
+  rating: 4.5, delivery: "Free delivery" };
+const result = { products: [product], country: "US", currency: "USD",
+  searched_at: "2026-10-03T12:00:00+00:00", query: "mirror", message: "Opciones encontradas" };
 
 test("el buscador acepta filtros y presupuesto opcional sin enviar datos de la casa", () => {
   assert.deepEqual(validateProductSearch({ ...form, purchase_price: "100000", payer: "No enviar" }), {
@@ -45,14 +46,17 @@ test("sólo se permiten enlaces públicos web sin credenciales", () => {
   assert.equal(safeProductUrl(product.url), product.url);
 });
 
-test("las tarjetas requieren precio string, misma moneda y enlace en las fuentes", () => {
+test("las tarjetas requieren precio string válido y misma moneda", () => {
   assert.equal(validateProductResults(result, "US").products[0].price, "25.50");
-  assert.throws(() => validateProductResults({ ...result, sources: [] }, "US"));
+  assert.equal(validateProductResults(result, "US").products[0].image, product.image);
   assert.throws(() => validateProductResults(result, "PE"));
   for (const price of [25.50, "25,50", "NaN", "0.00", "-20.00"]) {
     assert.throws(() => validateProductResults({ ...result, products: [{ ...product, price }] }, "US"));
   }
+  assert.throws(() => validateProductResults({ ...result, products: [{ ...product, rating: 9 }] }, "US"));
   assert.equal(validateProductResults({ ...result, products: [{ ...product, price: null }] }, "US").products[0].price, null);
+  // una foto con enlace inseguro se descarta (queda null), no rompe la tarjeta
+  assert.equal(validateProductResults({ ...result, products: [{ ...product, image: "javascript:alert(1)" }] }, "US").products[0].image, null);
 });
 
 test("un precio ausente no se muestra como oferta gratis y el formato conserva centavos", () => {

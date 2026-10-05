@@ -55,24 +55,26 @@ export function safeProductUrl(value) {
 export function validateProductResults(data, country) {
   const market = PRODUCT_MARKETS.find((item) => item.country === country);
   if (!market || data?.country !== country || data.currency !== market.currency
-    || !Array.isArray(data.products) || data.products.length > 6 || !Array.isArray(data.sources)
-    || !data.sources.every((source) => source && typeof source.url === "string")
+    || !Array.isArray(data.products) || data.products.length > 8
     || typeof data.message !== "string" || typeof data.searched_at !== "string"
     || Number.isNaN(Date.parse(data.searched_at))) throw new Error("El servidor devolvió una búsqueda inválida. Intentá nuevamente.");
-  const sources = new Set(data.sources.map((source) => safeProductUrl(source.url)).filter(Boolean));
   const seen = new Set();
   const products = data.products.map((product) => {
     if (!product || typeof product !== "object") throw new Error("La búsqueda contiene un producto inválido. Intentá nuevamente.");
     const url = safeProductUrl(product.url);
-    if (!url || !sources.has(url) || seen.has(url) || product.currency !== market.currency
-      || !["title", "store", "price_note", "shipping_note", "reason"].every((key) => typeof product[key] === "string")
-      || !product.title.trim() || !product.store.trim()
+    // La foto es opcional: si el enlace no es válido se descarta sin romper.
+    const image = product.image == null ? null : safeProductUrl(product.image);
+    if (!url || seen.has(url) || product.currency !== market.currency
+      || typeof product.title !== "string" || !product.title.trim()
+      || typeof product.store !== "string" || !product.store.trim()
+      || (product.delivery != null && typeof product.delivery !== "string")
+      || (product.rating != null && (typeof product.rating !== "number" || product.rating < 0 || product.rating > 5))
       || (product.price !== null && (typeof product.price !== "string"
         || !/^\d{1,9}\.\d{2}$/.test(product.price) || !/[1-9]/.test(product.price)))) {
       throw new Error("La búsqueda contiene un producto o enlace inválido. Intentá nuevamente.");
     }
     seen.add(url);
-    return { ...product, url };
+    return { ...product, url, image };
   });
   return { ...data, products };
 }
