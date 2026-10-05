@@ -120,14 +120,16 @@ export default function RehabProducts({ hidden }) {
                 <div className="products-thumb">
                   {product.image
                     ? <img src={product.image} alt="" loading="lazy" referrerPolicy="no-referrer" />
-                    : <ProductIcon category={searched.category} size={40} />}
+                    : <ProductIcon category={searched.category} size={38} />}
                 </div>
                 <div className="products-item-body">
-                  <span className="products-store">{product.store}</span>
-                  <h3>{product.title}</h3>
-                  <strong className="products-price">{productPrice(product)}</strong>
-                  <div className="products-item-meta">
+                  <div className="products-item-head">
+                    <span className="products-store">{product.store.split(/\s[–—-]\s/)[0]}</span>
                     {product.rating != null && <span className="products-rating">★ {product.rating.toFixed(1)}</span>}
+                  </div>
+                  <h3>{product.title}</h3>
+                  <div className="products-item-foot">
+                    <strong className="products-price">{productPrice(product)}</strong>
                     {product.delivery && <span className="products-delivery">{product.delivery}</span>}
                   </div>
                   <a className="products-store-link" href={product.url} target="_blank" rel="noopener noreferrer">Ver en la tienda <span aria-hidden="true">↗</span></a>
