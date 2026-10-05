@@ -178,16 +178,23 @@ def search_products(payload: ProductSearchRequest) -> ProductSearchResult:
 
     productos = (preferidas or otras)[:MAX_PRODUCTS]
 
+    mensaje = "Precios y stock pueden cambiar. Revisá medidas y total en la tienda."
+    if not productos:
+        mensaje = (
+            "No se encontraron productos con esos filtros. Probá ampliar el "
+            "presupuesto o cambiar el detalle."
+        )
+        # DEBUG temporal: entender por qué vino vacío (revertir luego).
+        dbg = f" [DEBUG top={list(data.keys())[:12]} error={str(data.get('error'))[:120]} n_raw={len(crudos)}"
+        if crudos and isinstance(crudos[0], dict):
+            dbg += f" item0={list(crudos[0].keys())[:16]}"
+        mensaje += dbg + "]"
+
     return ProductSearchResult(
         products=productos,
         searched_at=datetime.now(timezone.utc).isoformat(),
         country=payload.country,
         currency=currency,
         query=query,
-        message=(
-            "Precios y stock pueden cambiar. Revisá medidas y total en la tienda."
-            if productos
-            else "No se encontraron productos con esos filtros. Probá ampliar el "
-            "presupuesto o cambiar el detalle."
-        ),
+        message=mensaje,
     )
