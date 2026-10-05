@@ -13,7 +13,7 @@ function estado(trappedStr) {
   return { color: "var(--color-malo)", chip: "No sirve", sirve: false };
 }
 
-export default function SavedDeals({ deals, onAbrir, onEliminar, onIrCalculadora }) {
+export default function SavedDeals({ deals, onAbrir, onEliminar, onIniciarSeguimiento, onIrCalculadora }) {
   const [orden, setOrden] = useState("recientes");
   const [confirmando, setConfirmando] = useState(null);
 
@@ -100,6 +100,9 @@ export default function SavedDeals({ deals, onAbrir, onEliminar, onIrCalculadora
                 </span>
               </div>
               <div className="saved-actions">
+                <button className="btn-mini" onClick={() => onIniciarSeguimiento(d)}>
+                  Registrar gastos
+                </button>
                 <button className="btn-mini" onClick={() => onAbrir(d)}>
                   Abrir
                 </button>

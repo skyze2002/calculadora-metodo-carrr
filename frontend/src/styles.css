@@ -1944,3 +1944,51 @@ input:focus {
     display: flex;
   }
 }
+
+/* Destinos del menú, también en pantallas pequeñas. */
+.topbar-nav {
+  min-width: 0;
+}
+
+.topbar-nav .seg {
+  white-space: nowrap;
+}
+
+@media (max-width: 960px) {
+  .saved-view {
+    padding: 24px 14px 32px;
+  }
+  .saved-actions {
+    flex-wrap: wrap;
+  }
+  .saved-actions .btn-mini {
+    flex: 1 1 80px;
+    min-height: 40px;
+  }
+}
+
+@media (max-width: 800px) {
+  .topbar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 14px;
+  }
+  .topbar-nav {
+    width: 100%;
+    order: 2;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-radius: 18px;
+  }
+  .topbar-nav .seg {
+    flex: 1;
+    justify-content: center;
+    padding: 8px 5px;
+    gap: 4px;
+    font-size: 12px;
+  }
+  .topbar-nav .seg-count {
+    padding: 1px 5px;
+    font-size: 10px;
+  }
+}

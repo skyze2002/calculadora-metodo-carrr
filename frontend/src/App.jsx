@@ -6,12 +6,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { explainDeal } from "./api.js";
 import { evaluateLocal } from "./calc.js";
 import { percentToFraction } from "./format.js";
+import { progressDealFromSaved } from "./progress.js";
 import AiAnalysis from "./components/AiAnalysis.jsx";
 import BankRefiCalculator from "./components/BankRefiCalculator.jsx";
 import DealForm from "./components/DealForm.jsx";
 import FloatingBar from "./components/FloatingBar.jsx";
 import LenderClosing from "./components/LenderClosing.jsx";
 import Levers from "./components/Levers.jsx";
+import ProgressDeals from "./components/ProgressDeals.jsx";
+import RehabProducts from "./components/RehabProducts.jsx";
 import SavedDeals from "./components/SavedDeals.jsx";
 import TopBar from "./components/TopBar.jsx";
 import Verdict from "./components/Verdict.jsx";
@@ -19,6 +22,13 @@ import Waterfall from "./components/Waterfall.jsx";
 import ResultTable from "./components/ResultTable.jsx";
 import { exportarPDF, puedeCompartir } from "./pdf.js";
 import { deleteDeal, getDeals, saveDeal } from "./storage.js";
+import {
+  addProgressExpense,
+  createProgressDeal,
+  deleteProgressExpense,
+  getProgressDeals,
+  updateProgressExpense,
+} from "./progressStorage.js";
 import "./styles.css";
 
 // Deal de ejemplo inicial para que el panel nunca aparezca vacio.
@@ -53,6 +63,15 @@ export default function App() {
   // Vista actual y deals guardados en el telefono.
   const [vista, setVista] = useState("calc");
   const [deals, setDeals] = useState(() => getDeals());
+  const [progressData, setProgressData] = useState({ deals: [], error: null });
+  useEffect(() => {
+    try {
+      setProgressData({ deals: getProgressDeals(getDeals()), error: null });
+    } catch (err) {
+      setProgressData({ deals: [], error: err.message });
+    }
+  }, []);
+  const [progressId, setProgressId] = useState(null);
   const [guardado, setGuardado] = useState(false);
   // Campos recien autocompletados o cambiados por una palanca (resalte 1,6 s).
   const [resaltados, setResaltados] = useState([]);
@@ -162,11 +181,57 @@ export default function App() {
     setBase(d.form);
     setForm(d.form);
     setVista("calc");
-    evaluar(d.form);
+    setResult(evaluateLocal(aCalc(d.form)));
+    setEvaluado(d.form);
+    setAnalisis(null);
+    setError(null);
   }
 
   function eliminarDeal(id) {
     setDeals(deleteDeal(id));
+  }
+
+  function seleccionarProgreso(id) {
+    setProgressId(id);
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function crearSeguimiento(fields) {
+    try {
+      const { deal, deals: nextDeals } = createProgressDeal(fields);
+      setProgressData({ deals: nextDeals, error: null });
+      seleccionarProgreso(deal.id);
+      setVista("progreso");
+      return true;
+    } catch (err) {
+      setProgressData((previous) => ({ ...previous, error: err.message }));
+      return false;
+    }
+  }
+
+  function iniciarSeguimiento(saved) {
+    const existing = progressData.deals.find((deal) => deal.sourceDealId === saved.id);
+    if (existing) {
+      seleccionarProgreso(existing.id);
+      setVista("progreso");
+      return;
+    }
+    try {
+      crearSeguimiento(progressDealFromSaved(saved));
+    } catch (err) {
+      setProgressData((previous) => ({ ...previous, error: err.message }));
+    }
+    setVista("progreso");
+  }
+
+  function modificarSeguimiento(operation) {
+    try {
+      setProgressData({ deals: operation(), error: null });
+      return true;
+    } catch (err) {
+      setProgressData((previous) => ({ ...previous, error: err.message }));
+      return false;
+    }
   }
 
   return (
@@ -175,16 +240,33 @@ export default function App() {
         vista={vista}
         setVista={setVista}
         dealsCount={deals.length}
+        progressCount={progressData.deals.length}
         onGuardar={guardarDeal}
         guardado={guardado}
       />
 
-      {vista === "guardados" ? (
+      <RehabProducts hidden={vista !== "productos"} />
+      {vista === "productos" ? null : vista === "guardados" ? (
         <SavedDeals
           deals={deals}
           onAbrir={abrirDeal}
           onEliminar={eliminarDeal}
+          onIniciarSeguimiento={iniciarSeguimiento}
           onIrCalculadora={() => setVista("calc")}
+        />
+      ) : vista === "progreso" ? (
+        <ProgressDeals
+          deals={progressData.deals}
+          savedDeals={deals}
+          selectedId={progressId}
+          error={progressData.error}
+          onSelect={seleccionarProgreso}
+          onCreate={crearSeguimiento}
+          onIrCalculadora={() => setVista("calc")}
+          onExpenseSave={(id, fields, expenseId) => modificarSeguimiento(() => expenseId
+            ? updateProgressExpense(id, expenseId, fields)
+            : addProgressExpense(id, fields))}
+          onExpenseDelete={(id, expenseId) => modificarSeguimiento(() => deleteProgressExpense(id, expenseId))}
         />
       ) : (
         <>
