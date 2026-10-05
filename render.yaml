@@ -28,6 +28,10 @@ services:
       # funciona en sitios que no bloquean. Se consigue en scraperapi.com.
       - key: SCRAPER_API_KEY
         sync: false
+      # Pool del scraper: "" (plan free), "premium" o "ultra". Zillow necesita
+      # "ultra" (o "premium"), que requiere un plan PAGO de ScraperAPI.
+      - key: SCRAPER_PREMIUM
+        sync: false
       # Origenes permitidos (lista separada por comas). Incluye los de la APK
       # (WebView) y, si usas la web, agregale tu dominio de Vercel.
       - key: CORS_ORIGINS

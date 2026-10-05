@@ -293,16 +293,22 @@ def _descargar_via_scraper(url: str, clave: str) -> str:
     if not _es_host_publico(parsed.hostname):
         raise ValueError("El link apunta a un destino interno no permitido.")
 
-    # render=true ejecuta el JS de la pagina; ultra_premium usa IPs residenciales
-    # para los sitios mas duros (Zillow). Gasta mas creditos, pero es lo que
-    # hace que esos portales respondan.
-    params = {
-        "api_key": clave,
-        "url": url,
-        "render": "true",
-        "ultra_premium": "true",
-        "country_code": "us",
-    }
+    # Parametros configurables por entorno para no atarse al plan:
+    #  - SCRAPER_RENDER (default "true"): ejecuta el JS de la pagina.
+    #  - SCRAPER_PREMIUM ("", "premium" o "ultra"): los pools premium/
+    #    residenciales (necesarios para Zillow/Realtor) solo existen en los
+    #    planes pagos de ScraperAPI. Por defecto NO se piden, para que el plan
+    #    free no rechace el pedido. Al subir de plan, se activa con la variable
+    #    SCRAPER_PREMIUM=ultra en Render, sin tocar el codigo.
+    params = {"api_key": clave, "url": url, "country_code": "us"}
+    if os.environ.get("SCRAPER_RENDER", "true").strip().lower() != "false":
+        params["render"] = "true"
+    nivel = os.environ.get("SCRAPER_PREMIUM", "").strip().lower()
+    if nivel == "premium":
+        params["premium"] = "true"
+    elif nivel in ("ultra", "ultra_premium"):
+        params["ultra_premium"] = "true"
+
     with httpx.Client(timeout=75.0) as cliente:
         resp = cliente.get(SCRAPER_ENDPOINT, params=params)
         resp.raise_for_status()
