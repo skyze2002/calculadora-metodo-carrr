@@ -153,6 +153,12 @@ def test_untrusted_links_rejected(url):
     assert products.public_url(url) is None
 
 
+def test_public_url_encodes_spaces_in_query():
+    # Google Shopping deja espacios sin escapar en product_link; se codifican.
+    assert (products.public_url("https://www.google.com/search?q=round bathroom mirror")
+            == "https://www.google.com/search?q=round%20bathroom%20mirror")
+
+
 @pytest.mark.parametrize("budget", ["0", "0.00", "-5", "NaN", "1e3", "1,000", "12.345", 20.0])
 def test_invalid_or_non_string_budget_rejected(budget):
     with pytest.raises(ValidationError):

@@ -12,7 +12,7 @@ import os
 import re
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import quote, urlsplit, urlunsplit
 
 import httpx
 
@@ -38,8 +38,18 @@ def configurado() -> bool:
 
 
 def public_url(value: str) -> str | None:
-    """Sólo enlaces web públicos sin credenciales; no descarga ninguna URL."""
+    """Sólo enlaces web públicos sin credenciales; no descarga ninguna URL.
+
+    Codifica los espacios del path/query (Google Shopping los deja sin escapar
+    en product_link), pero rechaza caracteres de control y espacios en el host.
+    """
     try:
+        if not isinstance(value, str):
+            return None
+        value = value.strip()
+        # Caracteres de control (CR/LF/TAB, etc.): peligrosos en un enlace.
+        if any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in value):
+            return None
         parsed = urlsplit(value)
         host = parsed.hostname
         if (
@@ -48,7 +58,7 @@ def public_url(value: str) -> str | None:
             or parsed.username
             or parsed.password
             or parsed.port not in (None, 80, 443)
-            or any(char.isspace() for char in value)
+            or " " in parsed.netloc
         ):
             return None
         if host.lower() == "localhost" or host.lower().endswith(
@@ -63,7 +73,10 @@ def public_url(value: str) -> str | None:
         except ValueError:
             if "." not in host:
                 return None
-        return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, parsed.query, ""))
+        seguro = "/%:@&=+$,;~!*'()[]"
+        path = quote(parsed.path, safe=seguro)
+        query = quote(parsed.query, safe=seguro + "?")
+        return urlunsplit((parsed.scheme, parsed.netloc, path, query, ""))
     except (ValueError, TypeError):
         return None
 
@@ -178,32 +191,16 @@ def search_products(payload: ProductSearchRequest) -> ProductSearchResult:
 
     productos = (preferidas or otras)[:MAX_PRODUCTS]
 
-    mensaje = "Precios y stock pueden cambiar. Revisá medidas y total en la tienda."
-    if not productos:
-        mensaje = (
-            "No se encontraron productos con esos filtros. Probá ampliar el "
-            "presupuesto o cambiar el detalle."
-        )
-        # DEBUG temporal: entender por qué vino vacío (revertir luego).
-        dbg = f" [DEBUG n_raw={len(crudos)} error={str(data.get('error'))[:80]}"
-        if crudos and isinstance(crudos[0], dict):
-            i0 = crudos[0]
-            enlace = i0.get("product_link") or i0.get("link") or ""
-            dbg += (
-                f" plink={str(enlace)[:90]!r}"
-                f" pub={public_url(enlace)!r}"
-                f" src={str(i0.get('source'))[:30]!r}"
-                f" title_ok={bool(str(i0.get('title') or '').strip())}"
-                f" xp={i0.get('extracted_price')!r}"
-                f" thumb={str(i0.get('thumbnail'))[:50]!r}"
-            )
-        mensaje += dbg + "]"
-
     return ProductSearchResult(
         products=productos,
         searched_at=datetime.now(timezone.utc).isoformat(),
         country=payload.country,
         currency=currency,
         query=query,
-        message=mensaje,
+        message=(
+            "Precios y stock pueden cambiar. Revisá medidas y total en la tienda."
+            if productos
+            else "No se encontraron productos con esos filtros. Probá ampliar el "
+            "presupuesto o cambiar el detalle."
+        ),
     )
