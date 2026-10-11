@@ -14,7 +14,7 @@ from slowapi.errors import RateLimitExceeded
 load_dotenv()
 
 from api.limiter import limiter  # noqa: E402  (despues de load_dotenv)
-from api.routers import deals, products  # noqa: E402
+from api.routers import comps, deals, products  # noqa: E402
 
 app = FastAPI(title="Calculadora BRRRR", version="0.1.0")
 
@@ -38,6 +38,7 @@ app.add_middleware(
 
 app.include_router(deals.router)
 app.include_router(products.router)
+app.include_router(comps.router)
 
 
 @app.get("/health")
