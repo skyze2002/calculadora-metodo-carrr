@@ -80,8 +80,8 @@ def test_maps_fields_and_prefers_big_stores(monkeypatch):
     ]}
     patch_serpapi(monkeypatch, payload)
     result = products.search_products(ProductSearchRequest(category="mirrors", country="US"))
-    # Ollie's queda afuera porque hay tiendas preferidas (Walmart, Amazon).
-    assert [p.store for p in result.products] == ["Walmart", "Amazon.com"]
+    # Preferidas primero (en su orden); Ollie's completa la lista al final.
+    assert [p.store for p in result.products] == ["Walmart", "Amazon.com", "Ollie's Bargain Outlet"]
     primero = result.products[0]
     assert primero.price == "19.00"
     assert primero.image == "https://encrypted-tbn0.gstatic.com/img.jpg"
@@ -89,6 +89,16 @@ def test_maps_fields_and_prefers_big_stores(monkeypatch):
     assert primero.currency == "USD"
     assert primero.rating == 4.5
     assert result.model_dump()["products"][0]["price"] == "19.00"
+
+
+def test_other_stores_fill_up_to_max_after_preferred(monkeypatch):
+    otras = [shopping(source=f"Tienda {i}", product_link=f"https://t{i}.example/p") for i in range(10)]
+    pref = [shopping(source="Home Depot", product_link="https://www.homedepot.com/p/1")]
+    patch_serpapi(monkeypatch, {"shopping_results": otras + pref})
+    result = products.search_products(ProductSearchRequest(category="mirrors", country="US"))
+    assert len(result.products) == products.MAX_PRODUCTS
+    assert result.products[0].store == "Home Depot"
+    assert [p.store for p in result.products[1:]] == [f"Tienda {i}" for i in range(7)]
 
 
 def test_falls_back_to_other_stores_when_no_preferred(monkeypatch):
@@ -140,8 +150,16 @@ def test_query_uses_details_then_category(monkeypatch):
         return C(None)
 
     monkeypatch.setattr(products.httpx, "Client", fake_client)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    # US + detalle en español -> inglés (sin IA configurada: glosario).
     products.search_products(ProductSearchRequest(category="mirrors", country="US", details="espejo ovalado"))
+    assert captura["q"] == "mirror oval"
+    # Otros mercados buscan en español, tal cual.
+    products.search_products(ProductSearchRequest(category="mirrors", country="MX", details="espejo ovalado"))
     assert captura["q"] == "espejo ovalado"
+    # Un detalle que ya está en inglés no se toca.
+    products.search_products(ProductSearchRequest(category="mirrors", country="US", details="oval mirror 24 inch"))
+    assert captura["q"] == "oval mirror 24 inch"
     products.search_products(ProductSearchRequest(category="mirrors", country="US"))
     assert captura["q"] == "mirror"  # término en inglés para US
 
@@ -228,3 +246,96 @@ def test_api_limits_search_requests(client, monkeypatch):
     for _ in range(5):
         assert client.post("/products/search", json={"category": "mirrors", "country": "US"}).status_code == 503
     assert client.post("/products/search", json={"category": "mirrors", "country": "US"}).status_code == 429
+
+
+# --- Traducción del detalle al inglés (mercado US) ---
+
+@pytest.mark.parametrize("texto,esperado", [
+    ("grifo negro para lavamanos", "faucet black bathroom sink"),
+    ("espejo redondo de 24 pulgadas, sin luz", "mirror round 24 inch without light"),
+    ("Tiradores negros de 128 mm, paquete de 10", "pull handles black 128 mm pack 10"),
+    ("barra para cortina de 120 cm", "rod curtain 120 cm"),
+])
+def test_glossary_translation(texto, esperado):
+    assert products._parece_espanol(texto)
+    assert products._traducir_glosario(texto) == esperado
+
+
+@pytest.mark.parametrize("texto", ["round mirror 24 inch", "matte black faucet", "Moen 7594"])
+def test_english_details_are_not_detected_as_spanish(texto):
+    assert not products._parece_espanol(texto)
+
+
+class FakeOpenAI:
+    """Cliente de OpenAI falso: devuelve `respuesta` o lanza `error`."""
+
+    def __init__(self, respuesta=None, error=None):
+        self.respuesta, self.error, self.mensajes = respuesta, error, None
+        outer = self
+
+        class _Completions:
+            def create(self, **kw):
+                outer.mensajes = kw["messages"]
+                if outer.error:
+                    raise outer.error
+
+                class _Msg:
+                    content = outer.respuesta
+
+                class _Choice:
+                    message = _Msg()
+
+                class _Resp:
+                    choices = [_Choice()]
+
+                return _Resp()
+
+        class _Chat:
+            completions = _Completions()
+
+        self.chat = _Chat()
+
+
+def patch_openai(monkeypatch, fake):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-openai")
+    monkeypatch.setattr(products.openai, "OpenAI", lambda **kw: fake)
+
+
+def test_ai_translation_is_used_when_valid(monkeypatch):
+    fake = FakeOpenAI(respuesta='"matte black bathroom sink faucet"')
+    patch_openai(monkeypatch, fake)
+    q = products._consulta(ProductSearchRequest(category="faucets", country="US",
+                                                details="grifo negro mate para lavamanos"))
+    assert q == "matte black bathroom sink faucet"
+    # Sólo viaja el detalle de la búsqueda, como dato del usuario.
+    assert fake.mensajes[-1] == {"role": "user", "content": "grifo negro mate para lavamanos"}
+
+
+@pytest.mark.parametrize("salida", [
+    "Sure! Here is the query:\nblack faucet",   # varias líneas
+    "<script>alert(1)</script>",                 # caracteres fuera de lo permitido
+    "x" * 200,                                   # demasiado largo
+    "",                                          # vacío
+    None,
+])
+def test_ai_output_is_validated_and_falls_back_to_glossary(monkeypatch, salida):
+    patch_openai(monkeypatch, FakeOpenAI(respuesta=salida))
+    q = products._consulta(ProductSearchRequest(category="faucets", country="US",
+                                                details="grifo negro"))
+    assert q == "faucet black"
+
+
+def test_ai_failure_never_breaks_the_search(monkeypatch):
+    patch_openai(monkeypatch, FakeOpenAI(error=RuntimeError("timeout")))
+    q = products._consulta(ProductSearchRequest(category="mirrors", country="US",
+                                                details="espejo redondo"))
+    assert q == "mirror round"
+
+
+def test_no_ai_call_for_other_markets_or_english(monkeypatch):
+    fake = FakeOpenAI(respuesta="should not be used")
+    patch_openai(monkeypatch, fake)
+    products._consulta(ProductSearchRequest(category="mirrors", country="ES", details="espejo redondo"))
+    products._consulta(ProductSearchRequest(category="mirrors", country="US", details="round mirror"))
+    products._consulta(ProductSearchRequest(category="mirrors", country="US"))
+    assert fake.mensajes is None
