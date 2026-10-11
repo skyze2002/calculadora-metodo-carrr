@@ -9,6 +9,7 @@ import { percentToFraction } from "./format.js";
 import { progressDealFromSaved } from "./progress.js";
 import AiAnalysis from "./components/AiAnalysis.jsx";
 import BankRefiCalculator from "./components/BankRefiCalculator.jsx";
+import Comparables from "./components/Comparables.jsx";
 import DealForm from "./components/DealForm.jsx";
 import FloatingBar from "./components/FloatingBar.jsx";
 import LenderClosing from "./components/LenderClosing.jsx";
@@ -191,6 +192,14 @@ export default function App() {
     setDeals(deleteDeal(id));
   }
 
+  // Aplica el ARV sugerido por los comps al deal y vuelve a la calculadora.
+  function usarArvComps(valor) {
+    const digitos = String(Math.round(Number(valor)) || 0);
+    setForm((prev) => ({ ...prev, arv: digitos }));
+    setVista("calc");
+    resaltar(["arv"]);
+  }
+
   function seleccionarProgreso(id) {
     setProgressId(id);
     window.scrollTo({ top: 0, behavior: "auto" });
@@ -246,7 +255,12 @@ export default function App() {
       />
 
       <RehabProducts hidden={vista !== "productos"} />
-      {vista === "productos" ? null : vista === "guardados" ? (
+      <Comparables
+        hidden={vista !== "comparables"}
+        dealAddress={form.name}
+        onUsarArv={usarArvComps}
+      />
+      {vista === "productos" || vista === "comparables" ? null : vista === "guardados" ? (
         <SavedDeals
           deals={deals}
           onAbrir={abrirDeal}

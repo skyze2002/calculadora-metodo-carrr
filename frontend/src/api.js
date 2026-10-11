@@ -49,6 +49,33 @@ export async function evaluateDeal(deal) {
   return evaluateLocal(deal);
 }
 
+// Trae comparables de una propiedad (Zillapi vía backend). Necesita backend.
+export async function searchComps(payload, { signal } = {}) {
+  let response;
+  try {
+    response = await fetch(`${API_BASE}/comps/search`, {
+      method: "POST",
+      headers: headersIa(),
+      signal,
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    if (err.name === "AbortError") throw err;
+    throw new Error("Necesita conexión al servidor para traer comparables.");
+  }
+  if (!response.ok) {
+    let detalle = `No se pudieron traer los comparables (${response.status}).`;
+    try {
+      const data = await response.json();
+      if (data && data.detail) detalle = data.detail;
+    } catch {
+      // sin cuerpo JSON
+    }
+    throw new Error(detalle);
+  }
+  return response.json();
+}
+
 // Pide el analisis con IA. Siempre necesita el backend (no hay version local):
 // en dev pega por el proxy a localhost:8000; en produccion, a VITE_API_URL.
 export async function explainDeal(name, result) {

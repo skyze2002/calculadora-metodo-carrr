@@ -17,6 +17,7 @@ export default defineConfig(() => {
       proxy: {
         "/deals": { ...proxy },
         "/products": { ...proxy },
+        "/comps": { ...proxy },
         "/health": { ...proxy },
       },
     },

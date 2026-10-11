@@ -42,6 +42,14 @@ export default function TopBar({ vista, setVista, dealsCount, progressCount, onG
         >
           Productos rehab
         </button>
+        <button
+          type="button"
+          className={"seg" + (vista === "comparables" ? " active" : "")}
+          aria-current={vista === "comparables" ? "page" : undefined}
+          onClick={() => setVista("comparables")}
+        >
+          Comparables
+        </button>
       </nav>
 
       {vista === "calc" && (
