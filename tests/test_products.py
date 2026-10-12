@@ -299,14 +299,18 @@ class FakeOpenAI:
 def patch_openai(monkeypatch, fake):
     monkeypatch.setenv("OPENAI_API_KEY", "test-openai")
     monkeypatch.setattr(products.openai, "OpenAI", lambda **kw: fake)
+    monkeypatch.setattr(products, "_cache_consultas", {})
 
 
 def test_ai_translation_is_used_when_valid(monkeypatch):
-    fake = FakeOpenAI(respuesta='"matte black bathroom sink faucet"')
+    fake = FakeOpenAI(respuesta='"Matte Black Bathroom Sink Faucet"')
     patch_openai(monkeypatch, fake)
     q = products._consulta(ProductSearchRequest(category="faucets", country="US",
                                                 details="grifo negro mate para lavamanos"))
     assert q == "matte black bathroom sink faucet"
+    # La categoría va como contexto y el idioma destino es el del mercado.
+    assert "English" in fake.mensajes[0]["content"]
+    assert "faucet" in fake.mensajes[0]["content"]
     # Sólo viaja el detalle de la búsqueda, como dato del usuario.
     assert fake.mensajes[-1] == {"role": "user", "content": "grifo negro mate para lavamanos"}
 
@@ -332,10 +336,54 @@ def test_ai_failure_never_breaks_the_search(monkeypatch):
     assert q == "mirror round"
 
 
-def test_no_ai_call_for_other_markets_or_english(monkeypatch):
+def test_english_and_other_markets_are_also_normalized(monkeypatch):
+    # Español o inglés -> la misma query canónica (como Google).
+    fake = FakeOpenAI(respuesta="black bathroom sink faucet")
+    patch_openai(monkeypatch, fake)
+    q = products._consulta(ProductSearchRequest(category="faucets", country="US",
+                                                details="Black faucet for bathroom sink"))
+    assert q == "black bathroom sink faucet"
+    # Otros mercados: query canónica en español.
+    fake.respuesta = "espejo redondo"
+    q = products._consulta(ProductSearchRequest(category="mirrors", country="ES",
+                                                details="round mirror"))
+    assert q == "espejo redondo"
+    assert "Spanish" in fake.mensajes[0]["content"]
+
+
+def test_no_ai_call_without_details(monkeypatch):
     fake = FakeOpenAI(respuesta="should not be used")
     patch_openai(monkeypatch, fake)
-    products._consulta(ProductSearchRequest(category="mirrors", country="ES", details="espejo redondo"))
-    products._consulta(ProductSearchRequest(category="mirrors", country="US", details="round mirror"))
-    products._consulta(ProductSearchRequest(category="mirrors", country="US"))
+    assert products._consulta(ProductSearchRequest(category="mirrors", country="US")) == "mirror"
     assert fake.mensajes is None
+
+
+def test_same_details_are_cached_and_failures_are_not(monkeypatch):
+    llamadas = []
+    fake = FakeOpenAI(respuesta="round mirror")
+    patch_openai(monkeypatch, fake)
+    original = fake.chat.completions.create
+
+    def contar(**kw):
+        llamadas.append(kw)
+        return original(**kw)
+
+    fake.chat.completions.create = contar
+    req = dict(category="mirrors", country="US")
+    products._consulta(ProductSearchRequest(**req, details="espejo redondo"))
+    products._consulta(ProductSearchRequest(**req, details="  Espejo   REDONDO "))
+    assert len(llamadas) == 1  # misma búsqueda -> misma query, sin otra llamada
+
+    fake.error = RuntimeError("caída")
+    products._consulta(ProductSearchRequest(**req, details="espejo ovalado"))
+    fake.error = None
+    products._consulta(ProductSearchRequest(**req, details="espejo ovalado"))
+    assert len(llamadas) == 3  # el fallo no quedó cacheado
+
+
+def test_cache_is_bounded(monkeypatch):
+    patch_openai(monkeypatch, FakeOpenAI(respuesta="mirror"))
+    monkeypatch.setattr(products, "_CACHE_MAX", 3)
+    for i in range(10):
+        products._consulta(ProductSearchRequest(category="mirrors", country="US", details=f"espejo {i}"))
+    assert len(products._cache_consultas) == 3
