@@ -161,3 +161,23 @@ def test_api_returns_results(client, monkeypatch):
     assert body["subject"]["beds"] == 3
     assert body["comps"][0]["zpid"] == "200"
     assert client.get("/deals").json() == []
+
+
+def test_api_maps_zillapi_errors_and_never_leaks_the_key(client, monkeypatch, caplog):
+    monkeypatch.delenv("APP_KEY", raising=False)
+    monkeypatch.setenv("ZILLAPI_KEY", "zk_secreta")
+    req = httpx.Request("GET", "https://api.zillapi.com/x")
+    casos = [(402, 503, "créditos"), (401, 503, "no es válida"), (429, 429, "límite"),
+             (404, 404, "No se encontró"), (500, 502, "No se pudieron")]
+    for upstream, esperado, texto in casos:
+        def fail(payload, upstream=upstream):
+            raise httpx.HTTPStatusError(
+                "x", request=req, response=httpx.Response(upstream, request=req))
+        monkeypatch.setattr(comps, "buscar_comparables", fail)
+        r = client.post("/comps/search", json={"address": "171 Main St, Lexington, VA"})
+        assert r.status_code == esperado
+        assert texto in r.json()["detail"]
+        limiter.reset()
+    # Se registra el código de Zillapi para diagnosticar, nunca la key.
+    assert "HTTP 402" in caplog.text
+    assert "zk_secreta" not in caplog.text

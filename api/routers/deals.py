@@ -9,6 +9,7 @@ evaluate_deal, para que la unica fuente del calculo sea core.
 
 from __future__ import annotations
 
+import logging
 from decimal import Decimal
 
 import httpx
@@ -44,6 +45,8 @@ from schemas.deal import (
     DealOut,
     DealResultOut,
 )
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/deals", tags=["deals"])
 
@@ -212,6 +215,19 @@ def extract_url(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="La lectura con IA no esta configurada (falta la API key).",
+        )
+    except httpx.HTTPStatusError as e:
+        codigo = e.response.status_code
+        log.warning("El proveedor respondió HTTP %s en /deals/extract-url", codigo)
+        if codigo == 402:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="El servicio que lee Zillow se quedó sin créditos. Probá con la "
+                "foto del aviso.",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="No se pudo abrir ese link. Probá con la foto del aviso.",
         )
     except httpx.HTTPError:
         raise HTTPException(
