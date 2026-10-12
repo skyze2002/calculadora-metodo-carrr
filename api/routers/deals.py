@@ -134,19 +134,19 @@ def explain(request: Request, payload: DealExplainRequest) -> DealExplanation:
     if not credenciales_configuradas():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="El analisis con IA no esta configurado (falta OPENAI_API_KEY).",
+            detail="El análisis con IA no está configurado (falta OPENAI_API_KEY).",
         )
     try:
         analisis = generar_analisis(payload.name, payload.result)
     except openai.AuthenticationError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="El analisis con IA no esta configurado (falta la API key).",
+            detail="El análisis con IA no está configurado (falta la API key).",
         )
     except openai.APIError:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="No se pudo generar el analisis. Intenta de nuevo.",
+            detail="No se pudo generar el análisis. Intentá de nuevo.",
         )
     return DealExplanation(analisis=analisis)
 
@@ -162,7 +162,7 @@ def extract(request: Request, payload: DealExtractRequest) -> DealExtractResult:
     if not credenciales_configuradas():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="La lectura de fotos con IA no esta configurada (falta OPENAI_API_KEY).",
+            detail="La lectura de fotos con IA no está configurada (falta OPENAI_API_KEY).",
         )
     if not payload.image:
         raise HTTPException(
@@ -178,12 +178,12 @@ def extract(request: Request, payload: DealExtractRequest) -> DealExtractResult:
     except openai.AuthenticationError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="La lectura de fotos con IA no esta configurada (falta la API key).",
+            detail="La lectura de fotos con IA no está configurada (falta la API key).",
         )
     except (openai.APIError, ValueError):
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="No se pudo leer la foto. Intenta con otra imagen.",
+            detail="No se pudo leer la foto. Probá con otra imagen.",
         )
     return DealExtractResult(fields=fields)
 
@@ -201,7 +201,7 @@ def extract_url(
     if not credenciales_configuradas():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="La lectura con IA no esta configurada (falta OPENAI_API_KEY).",
+            detail="La lectura con IA no está configurada (falta OPENAI_API_KEY).",
         )
     url = payload.url.strip()
     if not url.startswith(("http://", "https://")):
@@ -214,7 +214,7 @@ def extract_url(
     except openai.AuthenticationError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="La lectura con IA no esta configurada (falta la API key).",
+            detail="La lectura con IA no está configurada (falta la API key).",
         )
     except httpx.HTTPStatusError as e:
         codigo = e.response.status_code
