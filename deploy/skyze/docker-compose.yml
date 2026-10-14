@@ -1,0 +1,38 @@
+# brrrr. API en skyze-server (DigitalOcean), detrás del Caddy de Rentaven.
+#
+# No publica puertos: se une a la red de Caddy (rentaven_default) con el alias
+# brrrr-api, igual que GIG, y Caddy le hace de proxy con HTTPS automático.
+# Los secretos van en .env (permisos 600), nunca en git.
+name: brrrr
+
+services:
+  api:
+    build:
+      context: ./src
+    image: brrrr-api:prod
+    restart: unless-stopped
+    env_file: .env
+    # Endurecimiento: sistema de archivos de solo lectura, sin capacidades de
+    # Linux, sin escalar privilegios y con tope de memoria (RAM compartida).
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 192m
+    pids_limit: 100
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      rentaven_default:
+        aliases:
+          - brrrr-api
+
+networks:
+  rentaven_default:
+    external: true

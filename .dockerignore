@@ -1,0 +1,12 @@
+# Nada de secretos ni archivos pesados dentro de la imagen.
+.env
+.env.*
+**/.env
+.venv
+**/__pycache__
+**/*.pyc
+.git
+frontend
+tests
+*.apk
+deploy
